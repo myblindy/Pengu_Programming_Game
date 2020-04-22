@@ -19,7 +19,7 @@ namespace Pengu.VirtualMachine
         public int LoadCode(byte[] code, int ipOffset = 0)
         {
             code.CopyTo(Memory, Memory.Length - code.Length);
-            StartInstructionPointer = InstructionPointer = Memory.AsMemory(Memory.Length - code.Length + ipOffset);
+            StartInstructionPointer = InstructionPointer = Memory.AsMemory(^(code.Length + ipOffset)..);
             return code.Length;
         }
 

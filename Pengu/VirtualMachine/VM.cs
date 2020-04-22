@@ -16,10 +16,11 @@ namespace Pengu.VirtualMachine
             Memory = new byte[memory];
         }
 
-        public void LoadCode(byte[] code, int ipOffset = 0)
+        public int LoadCode(byte[] code, int ipOffset = 0)
         {
             code.CopyTo(Memory, Memory.Length - code.Length);
             StartInstructionPointer = InstructionPointer = Memory.AsMemory(Memory.Length - code.Length + ipOffset);
+            return code.Length;
         }
 
         public int RunNextInstruction(int cycles = 1)

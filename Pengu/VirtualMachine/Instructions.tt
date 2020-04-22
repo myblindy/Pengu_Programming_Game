@@ -158,9 +158,10 @@ namespace Pengu.VirtualMachine
 			<# } #>
 		};
 
-		public static string Disassemble(Memory<byte> m)
+		public static string Disassemble(Memory<byte> m, out int size)
 		{
-			var (result, size) = InstructionDecompilation[(Instruction)m.Span[0]](m.Slice(1));
+			var (result, sz) = InstructionDecompilation[(Instruction)m.Span[0]](m.Slice(1));
+			size = sz;
 			return result;
 		}
 

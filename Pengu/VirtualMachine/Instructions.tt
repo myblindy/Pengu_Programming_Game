@@ -1,0 +1,173 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+
+<#
+	var instructions = new[]
+	{
+		("Mov_Reg_I8", @"vm.Registers[m.Span[0]] = m.Span[1]; return m.Slice(2);"),
+		("Mov_Reg_Reg", @"
+			I8ToI4I4(m.Span[0], out var r0, out var r1);
+			vm.Registers[r0] = vm.Registers[r1];
+			return m.Slice(1);"),
+		("Mov_Reg_PI8", @"vm.Registers[m.Span[0]] = vm.Memory[m.Span[1]]; return m.Slice(2);"),
+		("Mov_Reg_PReg", @"
+		    I8ToI4I4(m.Span[0], out var r0, out var r1);
+            vm.Registers[r0] = vm.Registers[r1];
+            return m.Slice(1);"),
+		("Mov_PI8_I8", @"vm.Memory[m.Span[0]] = m.Span[1]; return m.Slice(2);"),
+		("Mov_PI8_Reg", @"vm.Memory[m.Span[0]] = (byte)vm.Registers[m.Span[1]]; return m.Slice(2);"),
+		("Mov_PI8_PI8", @"vm.Memory[m.Span[0]] = vm.Memory[m.Span[1]]; return m.Slice(2);"),
+		("Mov_PI8_PReg", @"vm.Memory[m.Span[0]] = vm.Memory[vm.Registers[m.Span[1]]]; return m.Slice(2);"),
+		("Mov_PReg_I8", @"vm.Memory[vm.Registers[m.Span[0]]] = m.Span[1]; return m.Slice(2);"),
+		("Mov_PReg_Reg", @"
+            I8ToI4I4(m.Span[0], out var r0, out var r1);
+            vm.Memory[vm.Registers[r0]] = (byte)vm.Registers[r1];
+            return m.Slice(1);"),
+		("Mov_PReg_PI8", @"vm.Memory[vm.Registers[m.Span[0]]] = vm.Memory[m.Span[1]]; return m.Slice(2);"),
+		("Mov_PReg_PReg", @"
+			I8ToI4I4(m.Span[0], out var r0, out var r1);
+			vm.Memory[vm.Registers[r0]] = vm.Memory[vm.Registers[r1]];
+			return m.Slice(1);"),
+		("AddI_Reg_I8", @"vm.Registers[m.Span[0]] += m.Span[1]; return m.Slice(2);"),
+		("AddI_Reg_Reg", @"
+            I8ToI4I4(m.Span[0], out var r0, out var r1);
+            vm.Registers[r0] += vm.Registers[r1];
+            return m.Slice(1);"),
+		("AddI_Reg_PI8", @"vm.Registers[m.Span[0]] += vm.Memory[m.Span[1]]; return m.Slice(2);"),
+		("AddI_Reg_PReg", @"
+            I8ToI4I4(m.Span[0], out var r0, out var r1);
+            vm.Registers[r0] += vm.Memory[vm.Registers[r1]];
+            return m.Slice(1);"),
+		("SubI_Reg_I8", @"vm.Registers[m.Span[0]] -= m.Span[1]; return m.Slice(2);"),
+		("SubI_Reg_Reg", @"
+            I8ToI4I4(m.Span[0], out var r0, out var r1);
+            vm.Registers[r0] -= vm.Registers[r1];
+            return m.Slice(1);"),
+		("SubI_Reg_PI8", @"vm.Registers[m.Span[0]] -= vm.Memory[m.Span[1]]; return m.Slice(2);"),
+		("SubI_Reg_PReg", @"
+            I8ToI4I4(m.Span[0], out var r0, out var r1);
+            vm.Registers[r0] -= vm.Memory[vm.Registers[r1]];
+            return m.Slice(1);"),
+		("MulI_Reg_I8", @"vm.Registers[m.Span[0]] *= m.Span[1]; return m.Slice(2);"),
+		("MulI_Reg_Reg", @"
+            I8ToI4I4(m.Span[0], out var r0, out var r1);
+            vm.Registers[r0] *= vm.Registers[r1];
+            return m.Slice(1);"),
+		("MulI_Reg_PI8", @"vm.Registers[m.Span[0]] *= vm.Memory[m.Span[1]]; return m.Slice(2);"),
+		("MulI_Reg_PReg", @"
+            I8ToI4I4(m.Span[0], out var r0, out var r1);
+            vm.Registers[r0] *= vm.Memory[vm.Registers[r1]];
+            return m.Slice(1);"),
+	};
+#>
+
+using System;
+using System.Collections.Generic;
+
+namespace Pengu.VirtualMachine
+{
+	internal enum Instruction
+	{
+		<# foreach(var (name, _) in instructions) { #>
+			<#= name #>, 
+		<# } #>
+	}
+
+	internal static class InstructionSet
+	{
+		public static readonly Dictionary<Instruction, Func<VM, Memory<byte>, Memory<byte>>> InstructionDefinitions =
+			new Dictionary<Instruction, Func<VM, Memory<byte>, Memory<byte>>>()
+		{
+			<# foreach(var (name, code) in instructions) { #>
+				[Instruction.<#= name #>] = (vm, m) =>
+				{
+					<#= code #>
+				},
+			<# } #>
+		};
+
+		static readonly Dictionary<Instruction, Func<Memory<byte>, (string result, int size)>> InstructionDecompilation = 
+			new Dictionary<Instruction, Func<Memory<byte>, (string result, int size)>>()
+		{
+			<# foreach(var (name, _) in instructions) { #>
+				[Instruction.<#= name #>] = m =>
+				{
+					ReadOnlySpan<byte> s = m.Span;
+
+					<#
+					var split = name.Split('_');
+					var result = split[0].ToUpper() + " ";
+					var size = 1;
+
+					for(int idx = 1; idx < split.Length; ++idx)
+					{
+						// Reg_Reg?
+						if(idx + 1 < split.Length && split[idx] == "Reg" && split[idx + 1] == "Reg")
+						{
+							result += $"r{{s[{idx - 1}] & 0xF}} r{{(s[{idx - 1}] & 0xF0) >> 4}} ";
+							idx += 1;
+							size += 1;
+						}
+						else if(idx + 1 < split.Length && split[idx] == "PReg" && split[idx + 1] == "PReg")
+						{
+							result += $"[r{{s[{idx - 1}] & 0xF}}] [r{{(s[{idx - 1}] & 0xF0) >> 4}}] ";
+							idx += 1;
+							size += 1;
+						}
+						else if(idx + 1 < split.Length && split[idx] == "PReg" && split[idx + 1] == "Reg")
+						{
+							result += $"[r{{s[{idx - 1}] & 0xF}}] r{{(s[{idx - 1}] & 0xF0) >> 4}} ";
+							idx += 1;
+							size += 1;
+						}
+						else if(idx + 1 < split.Length && split[idx] == "Reg" && split[idx + 1] == "PReg")
+						{
+							result += $"r{{s[{idx - 1}] & 0xF}} [r{{(s[{idx - 1}] & 0xF0) >> 4}}] ";
+							idx += 1;
+							size += 1;
+						}
+						else if(split[idx] == "Reg")
+						{
+							result += $"r{{s[{idx - 1}] & 0xF}} ";
+							size += 1;
+						}
+						else if(split[idx] == "PReg")
+						{
+							result += $"[r{{s[{idx - 1}] & 0xF}}] ";
+							size += 1;
+						}
+						else if(split[idx] == "I8")
+						{
+							result += $"{{s[{idx - 1}]}} ";
+							size += 1;
+						}
+						else if(split[idx] == "PI8")
+						{
+							result += $"[{{s[{idx - 1}]}}] ";
+							size += 1;
+						}
+					}
+					#>
+
+					return ($"<#= result #>", <#= size #>);
+				},
+			<# } #>
+		};
+
+		public static string Disassemble(Memory<byte> m)
+		{
+			var (result, size) = InstructionDecompilation[(Instruction)m.Span[0]](m.Slice(1));
+			return result;
+		}
+
+	    static void I8ToI4I4(int input, out int v1, out int v2)
+        {
+            v1 = input & 0xF;
+            v2 = (input & 0xF0) >> 4;
+        }
+	}
+}

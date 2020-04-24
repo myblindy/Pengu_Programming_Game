@@ -1,4 +1,5 @@
-﻿using Pengu.VirtualMachine;
+﻿using Pengu.Renderer;
+using Pengu.VirtualMachine;
 using System;
 using System.Linq;
 
@@ -6,8 +7,11 @@ namespace Pengu
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main(string[] _)
         {
+            using var renderer = new VulkanContext(true);
+
+
             // mov r0 [1]
             // muli r0 r0
             // addi r0 [2]

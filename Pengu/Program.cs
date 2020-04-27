@@ -2,6 +2,7 @@
 using Pengu.VirtualMachine;
 using System;
 using System.Linq;
+using System.Windows.Forms;
 
 namespace Pengu
 {
@@ -10,7 +11,7 @@ namespace Pengu
         static void Main(string[] _)
         {
             using var renderer = new VulkanContext(true);
-
+            renderer.Run();
 
             // mov r0 [1]
             // muli r0 r0

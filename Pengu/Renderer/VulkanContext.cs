@@ -1,6 +1,8 @@
-﻿using System;
+﻿using MoreLinq;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using VulkanCore;
@@ -22,6 +24,10 @@ namespace Pengu.Renderer
         Device device;
         Queue graphicsPresentQueue;
         CommandPool graphicsCommandQueue;
+        SwapchainKhr swapChain;
+        Image[] swapChainImages;
+        ImageView[] swapChainImageViews;
+
 
         Semaphore imageAvailableSemaphore, renderingFinishedSemaphore;
 
@@ -64,7 +70,10 @@ namespace Pengu.Renderer
             }
 
             // create form and surface
-            form = new Form { Width = 1280, Height = 720 };
+            const int Width = 1280;
+            const int Height = 720;
+            form = new Form { Width = Width, Height = Height, FormBorderStyle = FormBorderStyle.FixedDialog };
+            form.Show();
             surface = instance.CreateWin32SurfaceKhr(new Win32SurfaceCreateInfoKhr(Process.GetCurrentProcess().Handle, form.Handle));
 
             int queueFamilyIndex = 0;
@@ -89,7 +98,9 @@ namespace Pengu.Renderer
 
             // create the logical device
             var deviceQueueCreateInfo = new DeviceQueueCreateInfo(queueFamilyIndex, 1, 1.0f);
-            var deviceCreateInfo = new DeviceCreateInfo(new[] { deviceQueueCreateInfo }, new[] { Constant.DeviceExtension.KhrSwapchain },
+            var deviceCreateInfo = new DeviceCreateInfo(
+                new[] { deviceQueueCreateInfo },
+                new[] { Constant.DeviceExtension.KhrSwapchain },
                 physicalDeviceFeatures);
             device = physicalDevice.CreateDevice(deviceCreateInfo);
 
@@ -99,7 +110,45 @@ namespace Pengu.Renderer
 
             imageAvailableSemaphore = device.CreateSemaphore();
             renderingFinishedSemaphore = device.CreateSemaphore();
+
+            var surfaceCapabilities = physicalDevice.GetSurfaceCapabilitiesKhr(surface);
+            var surfaceFormats = physicalDevice.GetSurfaceFormatsKhr(surface);
+            var surfacePresentModes = physicalDevice.GetSurfacePresentModesKhr(surface);
+
+            // try to get an R8G8B8_A8_SRGB surface format, otherwise pick the first one in the list of available formats
+            var surfaceFormat = surfaceFormats.FirstOrDefault(f => f.ColorSpace == ColorSpaceKhr.SRgbNonlinear && f.Format == Format.B8G8R8A8SRgb);
+            if (surfaceFormat.Format == Format.Undefined) surfaceFormat = surfaceFormats[0];
+
+            // try to get a mailbox present mode if available, otherwise revert to FIFO which is always available
+            var surfacePresentMode = surfacePresentModes.Contains(PresentModeKhr.Mailbox) ? PresentModeKhr.Mailbox : PresentModeKhr.Fifo;
+
+            // construct the swap chain extent based on window size
+            Extent2D extent;
+            if (surfaceCapabilities.CurrentExtent.Width != int.MaxValue)
+                extent = surfaceCapabilities.CurrentExtent;
+            else
+                extent = new Extent2D(
+                    Math.Max(surfaceCapabilities.MinImageExtent.Width, Math.Min(surfaceCapabilities.MaxImageExtent.Width, Width)),
+                    Math.Max(surfaceCapabilities.MinImageExtent.Height, Math.Min(surfaceCapabilities.MaxImageExtent.Height, Height)));
+
+            // swap chain count, has to be between min+1 and max
+            var swapChainImageCount = surfaceCapabilities.MinImageCount + 1;
+            if (surfaceCapabilities.MaxImageCount > 0 && surfaceCapabilities.MaxImageCount < swapChainImageCount)
+                swapChainImageCount = surfaceCapabilities.MaxImageCount;
+
+            // build the swap chain
+            swapChain = device.CreateSwapchainKhr(new SwapchainCreateInfoKhr(
+                surface, surfaceFormat.Format, extent, swapChainImageCount, surfaceFormat.ColorSpace,
+                imageUsage: ImageUsages.ColorAttachment, imageSharingMode: SharingMode.Exclusive,
+                preTransform: surfaceCapabilities.CurrentTransform, presentMode: surfacePresentMode));
+
+            // get the swap chain images, and build image views for them
+            swapChainImages = swapChain.GetImages();
+            swapChainImageViews = swapChainImages.Select(i => i.CreateView(new ImageViewCreateInfo(surfaceFormat.Format,
+                new ImageSubresourceRange(ImageAspects.Color, 0, 1, 0, 1)))).ToArray();
         }
+
+        internal void Run() => Application.Run(form);
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
@@ -112,6 +161,8 @@ namespace Pengu.Renderer
                 {
                 }
 
+                swapChainImageViews.ForEach(i => i.Dispose());
+                swapChain.Dispose();
                 imageAvailableSemaphore.Dispose();
                 renderingFinishedSemaphore.Dispose();
                 graphicsCommandQueue.Dispose();

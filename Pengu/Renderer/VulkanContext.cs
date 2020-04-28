@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
@@ -27,6 +28,9 @@ namespace Pengu.Renderer
         SwapchainKhr swapChain;
         Image[] swapChainImages;
         ImageView[] swapChainImageViews;
+        Framebuffer[] swapChainFramebuffers;
+        RenderPass renderPass;
+        PipelineLayout pipelineLayout;
 
 
         Semaphore imageAvailableSemaphore, renderingFinishedSemaphore;
@@ -55,13 +59,14 @@ namespace Pengu.Renderer
                     Constant.InstanceExtension.KhrWin32Surface,                 // TODO cross-platform
                 };
             }
+
             instance = new Instance(instanceCreateInfo);
 
             // debug layer
             if (debug)
             {
                 debugReportCallback = instance.CreateDebugReportCallbackExt(
-                    new DebugReportCallbackCreateInfoExt(DebugReportFlagsExt.Error | DebugReportFlagsExt.PerformanceWarning,
+                    new DebugReportCallbackCreateInfoExt(DebugReportFlagsExt.All,
                     args =>
                     {
                         Debug.WriteLine($"[{args.Flags}][{args.LayerPrefix}] {args.Message}");
@@ -146,7 +151,43 @@ namespace Pengu.Renderer
             swapChainImages = swapChain.GetImages();
             swapChainImageViews = swapChainImages.Select(i => i.CreateView(new ImageViewCreateInfo(surfaceFormat.Format,
                 new ImageSubresourceRange(ImageAspects.Color, 0, 1, 0, 1)))).ToArray();
+
+            // the render pass
+            renderPass = device.CreateRenderPass(new RenderPassCreateInfo(
+                new[] { new SubpassDescription(new[] { new AttachmentReference(0, VulkanCore.ImageLayout.ColorAttachmentOptimal) }) },
+                new[]
+                {
+                    new AttachmentDescription(0, surfaceFormat.Format, SampleCounts.Count1, AttachmentLoadOp.Clear, AttachmentStoreOp.Store,
+                        AttachmentLoadOp.DontCare, AttachmentStoreOp.DontCare, VulkanCore.ImageLayout.Undefined, VulkanCore.ImageLayout.PresentSrcKhr)
+                }));
+
+            // and the frame buffers for the render pass
+            swapChainFramebuffers = swapChainImageViews
+                .Select(iv => renderPass.CreateFramebuffer(new FramebufferCreateInfo(new[] { iv }, extent.Width, extent.Height)))
+                .ToArray();
+
+            using var vShader = BuildShaderModule("tris.vert.spiv");
+            using var fShader = BuildShaderModule("tris.frag.spiv");
+
+            pipelineLayout = device.CreatePipelineLayout();
+
+            var graphicsPipeline = device.CreateGraphicsPipeline(new GraphicsPipelineCreateInfo(
+                pipelineLayout, renderPass, 0,
+                new[]
+                {
+                    new PipelineShaderStageCreateInfo(ShaderStages.Vertex, vShader, "main"),
+                    new PipelineShaderStageCreateInfo(ShaderStages.Fragment, fShader, "main"),
+                },
+                new PipelineInputAssemblyStateCreateInfo(PrimitiveTopology.TriangleList),
+                new PipelineVertexInputStateCreateInfo(),
+                new PipelineRasterizationStateCreateInfo(),
+                viewportState: new PipelineViewportStateCreateInfo(
+                    new Viewport(0, 0, extent.Width, extent.Height),
+                    new Rect2D(0, 0, extent.Width, extent.Height))));
         }
+
+        internal ShaderModule BuildShaderModule(string fn) =>
+            device.CreateShaderModule(new ShaderModuleCreateInfo(File.ReadAllBytes(Path.Combine("ShaderSource", fn))));
 
         internal void Run() => Application.Run(form);
 
@@ -161,6 +202,7 @@ namespace Pengu.Renderer
                 {
                 }
 
+                renderPass.Dispose();
                 swapChainImageViews.ForEach(i => i.Dispose());
                 swapChain.Dispose();
                 imageAvailableSemaphore.Dispose();

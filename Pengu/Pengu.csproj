@@ -21,6 +21,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="ShaderSource\tris.frag.spiv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ShaderSource\tris.vert.spiv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="VirtualMachine\Instructions.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Instructions.cs</LastGenOutput>

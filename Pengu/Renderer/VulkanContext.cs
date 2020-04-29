@@ -116,7 +116,8 @@ namespace Pengu.Renderer
 
             // debug layer
             if (debug)
-                debugReportCallback = instance.CreateDebugReportCallback((flags, objectType, @object, location, messageCode, layerPrefix, message, userData) =>
+                debugReportCallback = instance.CreateDebugReportCallback(
+                    (flags, objectType, @object, location, messageCode, layerPrefix, message, userData) =>
                     {
                         Debug.WriteLine($"[{flags}][{layerPrefix}] {message}");
                         return flags.HasFlag(DebugReportFlags.Error);
@@ -127,7 +128,8 @@ namespace Pengu.Renderer
 
             var (pd, qs) = instance.EnumeratePhysicalDevices()
                 .Select(device => (device, q: QueueFamilyIndices.Find(device, surface)))
-                .Where(w => w.device.EnumerateDeviceExtensionProperties(null).Any(extension => extension.ExtensionName == KhrExtensions.Swapchain) && w.q.IsComplete)
+                .Where(w => w.device.EnumerateDeviceExtensionProperties(null)
+                    .Any(extension => extension.ExtensionName == KhrExtensions.Swapchain) && w.q.IsComplete)
                 .First();
             physicalDevice = pd;
             var indices = qs.Indices.ToArray();
@@ -183,32 +185,27 @@ namespace Pengu.Renderer
 
             // get the swap chain images, and build image views for them
             swapChainImages = swapChain.GetImages();
-            swapChainImageViews = swapChainImages.Select(i => device.CreateImageView(i, ImageViewType.ImageView2d, surfaceFormat.Format, ComponentMapping.Identity,
-                new ImageSubresourceRange(ImageAspectFlags.Color, 0, 1, 0, 1))).ToArray();
+            swapChainImageViews = swapChainImages
+                .Select(i => device.CreateImageView(i, ImageViewType.ImageView2d, surfaceFormat.Format, ComponentMapping.Identity,
+                    new ImageSubresourceRange(ImageAspectFlags.Color, 0, 1, 0, 1))).ToArray();
 
             // the render pass
             renderPass = device.CreateRenderPass(
-                new[]
+                new AttachmentDescription
                 {
-                    new AttachmentDescription
-                    {
-                        Format=surfaceFormat.Format,
-                        Samples= SampleCountFlags.SampleCount1,
-                        LoadOp= AttachmentLoadOp.Clear,
-                        StoreOp= AttachmentStoreOp.Store,
-                        StencilLoadOp= AttachmentLoadOp.DontCare,
-                        StencilStoreOp= AttachmentStoreOp.DontCare,
-                        InitialLayout=ImageLayout.Undefined,
-                        FinalLayout= ImageLayout.PresentSource,
-                    }
+                    Format = surfaceFormat.Format,
+                    Samples = SampleCountFlags.SampleCount1,
+                    LoadOp = AttachmentLoadOp.Clear,
+                    StoreOp = AttachmentStoreOp.Store,
+                    StencilLoadOp = AttachmentLoadOp.DontCare,
+                    StencilStoreOp = AttachmentStoreOp.DontCare,
+                    InitialLayout = ImageLayout.Undefined,
+                    FinalLayout = ImageLayout.PresentSource,
                 },
-                new[]
+                new SubpassDescription
                 {
-                    new SubpassDescription
-                    {
-                        PipelineBindPoint = PipelineBindPoint.Graphics,
-                        ColorAttachments=new[]{new AttachmentReference { Attachment=0, Layout=ImageLayout.ColorAttachmentOptimal} },
-                    }
+                    PipelineBindPoint = PipelineBindPoint.Graphics,
+                    ColorAttachments=new[]{new AttachmentReference { Attachment=0, Layout=ImageLayout.ColorAttachmentOptimal} },
                 },
                 new[]
                 {
@@ -234,7 +231,7 @@ namespace Pengu.Renderer
 
             // and the frame buffers for the render pass
             swapChainFramebuffers = swapChainImageViews
-                .Select(iv => device.CreateFramebuffer(renderPass, new[] { iv }, extent.Width, extent.Height, 1))
+                .Select(iv => device.CreateFramebuffer(renderPass, iv, extent.Width, extent.Height, 1))
                 .ToArray();
 
             using var vShader = CreateShaderModule("tris.vert.spiv");

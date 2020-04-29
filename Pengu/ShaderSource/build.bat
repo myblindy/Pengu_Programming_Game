@@ -1,2 +1,2 @@
-glslc tris.frag -o tris.frag.spiv
-glslc tris.vert -o tris.vert.spiv
+glslc tris.frag -o ../Shaders/tris.frag.spiv
+glslc tris.vert -o ../Shaders/tris.vert.spiv

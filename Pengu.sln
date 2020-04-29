@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30011.22
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pengu", "Pengu\Pengu.csproj", "{29179493-710D-421E-AD1F-E1F1ED0E22A5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pengu.FontGen", "Pengu.FontGen\Pengu.FontGen.csproj", "{71420FC9-0CA7-45F9-93B9-EF58C940951D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,18 @@ Global
 		{29179493-710D-421E-AD1F-E1F1ED0E22A5}.Release|x64.Build.0 = Release|x64
 		{29179493-710D-421E-AD1F-E1F1ED0E22A5}.Release|x86.ActiveCfg = Release|x86
 		{29179493-710D-421E-AD1F-E1F1ED0E22A5}.Release|x86.Build.0 = Release|x86
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Debug|x64.Build.0 = Debug|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Debug|x86.Build.0 = Debug|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Release|x64.ActiveCfg = Release|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Release|x64.Build.0 = Release|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Release|x86.ActiveCfg = Release|Any CPU
+		{71420FC9-0CA7-45F9-93B9-EF58C940951D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

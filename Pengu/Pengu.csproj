@@ -6,11 +6,17 @@
     <LangVersion>preview</LangVersion>
     <StartupObject>Pengu.Program</StartupObject>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Platforms>AnyCPU;x86</Platforms>
+    <Platforms>AnyCPU;x86;x64</Platforms>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants></DefineConstants>
+    <NoWarn>1701;1702;CA1305</NoWarn>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DefineConstants />
     <NoWarn>1701;1702;CA1305</NoWarn>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>

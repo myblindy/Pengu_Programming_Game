@@ -2,25 +2,39 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <UseWindowsForms>true</UseWindowsForms>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <StartupObject>Pengu.Program</StartupObject>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Platforms>AnyCPU;x86</Platforms>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants></DefineConstants>
     <NoWarn>1701;1702;CA1305</NoWarn>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <DefineConstants />
+    <NoWarn>1701;1702;CA1305</NoWarn>
+    <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0-beta3.final">
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="morelinq" Version="3.3.2" />
-    <PackageReference Include="VulkanCore" Version="1.0.0-alpha40" />
+    <PackageReference Include="SharpVk" Version="0.4.3-dev2" />
+    <PackageReference Include="SharpVk.Glfw" Version="0.4.3-dev2" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="deps\glfw3.dll">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
     <None Update="ShaderSource\tris.frag.spiv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -44,5 +58,9 @@
       <DependentUpon>Instructions.tt</DependentUpon>
     </Compile>
   </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="xcopy /y deps\* &quot;$(TargetDir)&quot;" />
+  </Target>
 
 </Project>

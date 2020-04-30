@@ -290,7 +290,7 @@ namespace Pengu.Renderer
 
         private ShaderModule CreateShaderModule(string filePath)
         {
-            var fileBytes = File.ReadAllBytes(Path.Combine("ShaderSource", filePath));
+            var fileBytes = File.ReadAllBytes(Path.Combine("Shaders", filePath));
             var shaderData = new uint[(int)Math.Ceiling(fileBytes.Length / 4f)];
 
             System.Buffer.BlockCopy(fileBytes, 0, shaderData, 0, fileBytes.Length);

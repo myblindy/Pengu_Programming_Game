@@ -6,7 +6,7 @@
 <#@ output extension=".cs" #>
 
 <#
-	var instructions = new[]
+	(string name, string instruction)[] instructions = new[]
 	{
 		("Mov_Reg_I8", @"vm.Registers[m.Span[0]] = m.Span[1]; return m.Slice(2);"),
 		("Mov_Reg_Reg", @"
@@ -66,7 +66,10 @@
 #>
 
 using System;
+using System.IO;
+using System.Linq;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace Pengu.VirtualMachine
 {
@@ -164,6 +167,80 @@ namespace Pengu.VirtualMachine
 			size = sz;
 			return result;
 		}
+
+        public static List<byte> Assemble(string s)
+        {
+            var bytes = new List<byte>();
+
+			int i0, i1;
+
+            var reader = new StringReader(s);
+            string line;
+            var tokens = new List<string>();
+            while ((line = reader.ReadLine()) != null)
+            {
+                tokens.Clear();
+                for (int idx = 0; idx < line.Length && !char.IsWhiteSpace(line[idx]); ++idx)
+                {
+                    var start = idx;
+                    while (idx < line.Length && !char.IsWhiteSpace(line[idx]))
+                        ++idx;
+                    tokens.Add(line[start..idx]);
+                }
+
+				if(!tokens.Any()) continue;
+
+				static bool IsReg(string s, out int r) 
+				{ 
+					var m = Regex.Match(s, @"^r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					r = m.Success ? Convert.ToInt32(m.Groups[1].Value) : 0; 
+					return m.Success; 
+				}
+				static bool IsI8(string s, out int r) 
+				{ 
+					var m = Regex.Match(s, @"^(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					r = m.Success ? Convert.ToInt32(m.Groups[1].Value) : 0; 
+					return m.Success; 
+				}
+				static bool IsPReg(string s, out int r) 
+				{ 
+					var m = Regex.Match(s, @"^\[r(\d+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					r = m.Success ? Convert.ToInt32(m.Groups[1].Value) : 0; 
+					return m.Success; 
+				}
+				static bool IsPI8(string s, out int r) 
+				{ 
+					var m = Regex.Match(s, @"^\[(\d+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					r = m.Success ? Convert.ToInt32(m.Groups[1].Value) : 0; 
+					return m.Success; 
+				}
+
+				<# foreach(var namegrp in instructions.Select(w => w.name).GroupBy(w => w.Split('_')[0])) { #>
+					if(tokens[0].Equals("<#= namegrp.Key #>", StringComparison.OrdinalIgnoreCase))
+					{
+						<# foreach(var name in namegrp)
+						{
+							var split = name.Split('_');
+						#>
+						if(tokens.Count == <#= split.Length #>
+							<# int idx = 0; foreach(var token in split.Skip(1)) { #> && Is<#= token #>(tokens[<#= idx + 1 #>], out i<#= idx++ #>) <# } #>)
+						{
+							bytes.Add((int)Instruction.<#= name #>);
+							<# if(split[1].EndsWith("Reg", StringComparison.OrdinalIgnoreCase) && split[2].EndsWith("Reg", StringComparison.OrdinalIgnoreCase)) { #>
+								bytes.Add((byte)(((i0 & 0xF) << 4) | (i1 & 0xF)));
+							<# } else { #>
+								bytes.Add((byte)i0);
+								bytes.Add((byte)i1);
+							<# } #>
+							continue;
+						}
+						<# } #>
+					}
+				<# } #>
+            }
+
+            return bytes;
+        }
 
 	    static void I8ToI4I4(int input, out int v1, out int v2)
         {

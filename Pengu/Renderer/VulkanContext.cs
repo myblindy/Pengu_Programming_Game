@@ -7,14 +7,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using static MoreLinq.Extensions.ForEachExtension;
 
 namespace Pengu.Renderer
 {
-    public class VulkanContext : IDisposable
+    public partial class VulkanContext : IDisposable
     {
         WindowHandle window;
+        Extent2D extent;
         Instance instance;
         DebugReportCallback debugReportCallback;
         Surface surface;
@@ -23,23 +25,24 @@ namespace Pengu.Renderer
         PhysicalDeviceFeatures physicalDeviceFeatures;
         PhysicalDeviceProperties physicalDeviceProperties;
         Device device;
-        Queue graphicsQueue, presentQueue;
-        CommandPool graphicsCommandPool, presentCommandPool;
+        Queue graphicsQueue, presentQueue, transferQueue;
+        CommandPool graphicsCommandPool, presentCommandPool, transientTransferCommandPool;
         Swapchain swapChain;
         Image[] swapChainImages;
         ImageView[] swapChainImageViews;
         Framebuffer[] swapChainFramebuffers;
         RenderPass renderPass;
         PipelineLayout pipelineLayout;
-        Pipeline pipeline;
-        CommandPool commandPool;
-        CommandBuffer[] commandBuffers;
+        CommandBuffer[] swapChainImageCommandBuffers;
+
+        Font monospaceFont;
 
         Semaphore imageAvailableSemaphore, renderingFinishedSemaphore;
 
         private struct QueueFamilyIndices
         {
             public uint? GraphicsFamily;
+            public uint? TransferFamily;
             public uint? PresentFamily;
 
             public IEnumerable<uint> Indices
@@ -51,10 +54,13 @@ namespace Pengu.Renderer
 
                     if (PresentFamily.HasValue && PresentFamily != GraphicsFamily)
                         yield return PresentFamily.Value;
+
+                    if (TransferFamily.HasValue && TransferFamily != GraphicsFamily && TransferFamily != PresentFamily)
+                        yield return TransferFamily.Value;
                 }
             }
 
-            public bool IsComplete => GraphicsFamily.HasValue && PresentFamily.HasValue;
+            public bool IsComplete => GraphicsFamily.HasValue && PresentFamily.HasValue && TransferFamily.HasValue;
 
             public static QueueFamilyIndices Find(PhysicalDevice device, Surface surface)
             {
@@ -67,9 +73,14 @@ namespace Pengu.Renderer
                     if (queueFamilies[index].QueueFlags.HasFlag(QueueFlags.Graphics))
                         indices.GraphicsFamily = index;
 
+                    if (queueFamilies[index].QueueFlags.HasFlag(QueueFlags.Transfer))
+                        indices.TransferFamily = index;
+
                     if (device.GetSurfaceSupport(index, surface))
                         indices.PresentFamily = index;
                 }
+
+                indices.TransferFamily ??= indices.GraphicsFamily;
 
                 return indices;
             }
@@ -148,6 +159,8 @@ namespace Pengu.Renderer
             graphicsCommandPool = device.CreateCommandPool(qs.GraphicsFamily.Value);
             presentQueue = device.GetQueue(qs.GraphicsFamily.Value, 0);
             presentCommandPool = device.CreateCommandPool(qs.PresentFamily.Value);
+            transferQueue = device.GetQueue(qs.TransferFamily.Value, 0);
+            transientTransferCommandPool = device.CreateCommandPool(qs.TransferFamily.Value, CommandPoolCreateFlags.Transient);
 
             imageAvailableSemaphore = device.CreateSemaphore();
             renderingFinishedSemaphore = device.CreateSemaphore();
@@ -164,7 +177,6 @@ namespace Pengu.Renderer
             var surfacePresentMode = surfacePresentModes.Contains(PresentMode.Mailbox) ? PresentMode.Mailbox : PresentMode.Fifo;
 
             // construct the swap chain extent based on window size
-            Extent2D extent;
             if (surfaceCapabilities.CurrentExtent.Width != int.MaxValue)
                 extent = surfaceCapabilities.CurrentExtent;
             else
@@ -205,7 +217,7 @@ namespace Pengu.Renderer
                 new SubpassDescription
                 {
                     PipelineBindPoint = PipelineBindPoint.Graphics,
-                    ColorAttachments=new[]{new AttachmentReference { Attachment=0, Layout=ImageLayout.ColorAttachmentOptimal} },
+                    ColorAttachments = new[] { new AttachmentReference { Attachment = 0, Layout = ImageLayout.ColorAttachmentOptimal } },
                 },
                 new[]
                 {
@@ -234,55 +246,19 @@ namespace Pengu.Renderer
                 .Select(iv => device.CreateFramebuffer(renderPass, iv, extent.Width, extent.Height, 1))
                 .ToArray();
 
-            using var vShader = CreateShaderModule("tris.vert.spiv");
-            using var fShader = CreateShaderModule("tris.frag.spiv");
-
             pipelineLayout = device.CreatePipelineLayout(null, null);
 
-            pipeline = device.CreateGraphicsPipeline(null,
-                new[]
-                {
-                    new PipelineShaderStageCreateInfo { Stage = ShaderStageFlags.Vertex, Module = vShader, Name = "main" },
-                    new PipelineShaderStageCreateInfo { Stage = ShaderStageFlags.Fragment, Module = fShader, Name = "main" },
-                },
-                new PipelineVertexInputStateCreateInfo { },
-                new PipelineInputAssemblyStateCreateInfo { Topology = PrimitiveTopology.TriangleList },
-                new PipelineRasterizationStateCreateInfo { LineWidth = 1 },
-                pipelineLayout, renderPass, 0, null, -1,
-                viewportState: new PipelineViewportStateCreateInfo
-                {
-                    Viewports = new[] { new Viewport(0, 0, extent.Width, extent.Height, 0, 1) },
-                    Scissors = new[] { new Rect2D(extent) },
-                },
-                colorBlendState: new PipelineColorBlendStateCreateInfo
-                {
-                    Attachments = new[]
-                    {
-                        new PipelineColorBlendAttachmentState
-                        {
-                            ColorWriteMask = ColorComponentFlags.R | ColorComponentFlags.G | ColorComponentFlags.B | ColorComponentFlags.A,
-                        }
-                    }
-                },
-                multisampleState: new PipelineMultisampleStateCreateInfo
-                {
-                    SampleShadingEnable = false,
-                    RasterizationSamples = SampleCountFlags.SampleCount1,
-                    MinSampleShading = 1
-                });
+            swapChainImageCommandBuffers = device.AllocateCommandBuffers(graphicsCommandPool, CommandBufferLevel.Primary, (uint)swapChainFramebuffers.Length);
 
-            commandPool = device.CreateCommandPool(qs.GraphicsFamily.Value);
-
-            commandBuffers = device.AllocateCommandBuffers(commandPool, CommandBufferLevel.Primary, (uint)swapChainFramebuffers.Length);
+            monospaceFont = new Font(this);
 
             for (int idx = 0; idx < swapChainFramebuffers.Length; ++idx)
             {
-                var commandBuffer = commandBuffers[idx];
+                var commandBuffer = swapChainImageCommandBuffers[idx];
 
                 commandBuffer.Begin(CommandBufferUsageFlags.SimultaneousUse);
                 commandBuffer.BeginRenderPass(renderPass, swapChainFramebuffers[idx], new Rect2D(extent), new ClearValue(), SubpassContents.Inline);
-                commandBuffer.BindPipeline(PipelineBindPoint.Graphics, pipeline);
-                commandBuffer.Draw(3, 1, 0, 0);
+                monospaceFont.Draw(commandBuffer);
                 commandBuffer.EndRenderPass();
                 commandBuffer.End();
             }
@@ -298,6 +274,40 @@ namespace Pengu.Renderer
             return device.CreateShaderModule(fileBytes.Length, shaderData);
         }
 
+        uint FindMemoryType(uint typeFilter, MemoryPropertyFlags memoryPropertyFlags)
+        {
+            var memoryProperties = physicalDevice.GetMemoryProperties();
+
+            for (int i = 0; i < memoryProperties.MemoryTypes.Length; i++)
+                if ((typeFilter & (1u << i)) > 0 && memoryProperties.MemoryTypes[i].PropertyFlags.HasFlag(memoryPropertyFlags))
+                    return (uint)i;
+
+            throw new Exception("No compatible memory type.");
+        }
+
+        void CreateBuffer(ulong size, BufferUsageFlags usageFlags, MemoryPropertyFlags memoryPropertyFlags,
+            out SharpVk.Buffer buffer, out DeviceMemory deviceMemory)
+        {
+            buffer = device.CreateBuffer(size, usageFlags, SharingMode.Exclusive, null);
+            var memRequirements = buffer.GetMemoryRequirements();
+            deviceMemory = device.AllocateMemory(memRequirements.Size, FindMemoryType(memRequirements.MemoryTypeBits, memoryPropertyFlags));
+            buffer.BindMemory(deviceMemory, 0);
+        }
+
+        void CopyBuffer(SharpVk.Buffer sourceBuffer, SharpVk.Buffer destinationBuffer, ulong size)
+        {
+            var transferBuffers = device.AllocateCommandBuffers(transientTransferCommandPool, CommandBufferLevel.Primary, 1);
+
+            transferBuffers[0].Begin(CommandBufferUsageFlags.OneTimeSubmit);
+            transferBuffers[0].CopyBuffer(sourceBuffer, destinationBuffer, new BufferCopy { Size = size });
+            transferBuffers[0].End();
+
+            transferQueue.Submit(new SubmitInfo { CommandBuffers = transferBuffers }, null);
+            transferQueue.WaitIdle();
+
+            transientTransferCommandPool.FreeCommandBuffers(transferBuffers);
+        }
+
         private void DrawFrame()
         {
             uint nextImage = swapChain.AcquireNextImage(uint.MaxValue, imageAvailableSemaphore, null);
@@ -305,7 +315,7 @@ namespace Pengu.Renderer
             graphicsQueue.Submit(
                 new SubmitInfo
                 {
-                    CommandBuffers = new[] { commandBuffers[nextImage] },
+                    CommandBuffers = new[] { swapChainImageCommandBuffers[nextImage] },
                     SignalSemaphores = new[] { renderingFinishedSemaphore },
                     WaitDestinationStageMask = new[] { PipelineStageFlags.ColorAttachmentOutput },
                     WaitSemaphores = new[] { imageAvailableSemaphore }
@@ -349,14 +359,14 @@ namespace Pengu.Renderer
                 {
                 }
 
-                commandPool.Dispose();
-                pipeline.Dispose();
+                monospaceFont.Dispose();
                 pipelineLayout.Dispose();
                 renderPass.Dispose();
                 swapChainImageViews.ForEach(i => i.Dispose());
                 swapChain.Dispose();
                 imageAvailableSemaphore.Dispose();
                 renderingFinishedSemaphore.Dispose();
+                transientTransferCommandPool.Dispose();
                 graphicsCommandPool.Dispose();
                 presentCommandPool.Dispose();
                 device.Dispose();

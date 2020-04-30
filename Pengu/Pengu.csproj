@@ -35,6 +35,8 @@
     <PackageReference Include="morelinq" Version="3.3.2" />
     <PackageReference Include="SharpVk" Version="0.4.3-dev2" />
     <PackageReference Include="SharpVk.Glfw" Version="0.4.3-dev2" />
+    <PackageReference Include="SharpVk.Shanq" Version="0.4.3-dev4" />
+    <PackageReference Include="SharpVk.Shanq.Numerics" Version="0.4.3-dev2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -44,7 +46,7 @@
     <None Update="Media\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Shaders\*.spiv">
+    <None Update="Shaders\*.spv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="VirtualMachine\Instructions.tt">

@@ -28,7 +28,9 @@ namespace Pengu.VirtualMachine
         {
             while (cycles-- > 0 && InstructionPointer < Memory.Length - 1)
             {
-                var nextip = InstructionSet.InstructionDefinitions[(Instruction)Memory[InstructionPointer]](this, InstructionPointer + 1);
+                int nextip = -1;
+                if (InstructionSet.InstructionDefinitions.TryGetValue((Instruction)Memory[InstructionPointer], out var fn))
+                    nextip = fn(this, InstructionPointer + 1);
                 if (nextip < 0) break; else InstructionPointer = nextip;
             }
 

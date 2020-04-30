@@ -10,8 +10,8 @@ namespace Pengu
     {
         static void Main(string[] _)
         {
-            //using var renderer = new VulkanContext(true);
-            //renderer.Run();
+            using var renderer = new VulkanContext(true);
+            renderer.Run();
 
             var vm = new VM(1, 20);
 

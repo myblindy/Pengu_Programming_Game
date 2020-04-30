@@ -11,7 +11,7 @@ namespace Pengu.FontGen
     {
         static IEnumerable<char> Range(char from, char to)
         {
-            while (from < to)
+            while (from <= to)
             {
                 yield return from;
                 ++from;
@@ -45,7 +45,8 @@ namespace Pengu.FontGen
             var area = charSizes.Values.Sum(s => s.Width * s.Height);
             var texWidth = (int)(Math.Sqrt(area) * 1.1);
 
-            using var binoutput = new BinaryWriter(File.OpenWrite($"{args[0]}.bin"));
+            var fn = args[0].Replace(' ', '_');
+            using var binoutput = new BinaryWriter(File.OpenWrite($"{fn}.bin"));
 
             using var bmp = new Bitmap(texWidth, texWidth, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
             using (var g = Graphics.FromImage(bmp))
@@ -72,7 +73,7 @@ namespace Pengu.FontGen
                 }
             }
 
-            bmp.Save($"{args[0]}.png");
+            bmp.Save($"{fn}.png");
         }
     }
 }

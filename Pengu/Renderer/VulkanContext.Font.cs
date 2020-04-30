@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Text;
 using SharpVk;
-using SharpVk.Shanq;
-using SharpVk.Shanq.Numerics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Linq;
@@ -16,7 +14,7 @@ namespace Pengu.Renderer
         {
             const int InitialCharacterSize = 64;
 
-            VulkanContext context;
+            readonly VulkanContext context;
             SharpVk.Buffer vertexBuffer, stagingVertexBuffer;
             DeviceMemory vertexBufferMemory, stagingVertexBufferMemory;
             Pipeline pipeline;
@@ -111,6 +109,7 @@ namespace Pengu.Renderer
                     vertexBufferMemory.Free();
                     stagingVertexBuffer.Dispose();
                     stagingVertexBufferMemory.Free();
+                    pipeline.Dispose();
 
                     disposedValue = true;
                 }
@@ -131,7 +130,6 @@ namespace Pengu.Renderer
 
         struct FontVertex
         {
-            [Location(0)]
             Vector2 position;
 
             public FontVertex(Vector2 position) => this.position = position;

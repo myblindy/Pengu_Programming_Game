@@ -50,43 +50,44 @@ namespace Pengu.Renderer
                 // build the font texture objects
                 context.CreateTextureImage("pt_mono.png", context.queueIndices.TransferFamily.Value, out fontTextureImage, out fontTextureImageMemory);
 
-                using (var vShader = context.CreateShaderModule("font.vert.spv"))
-                using (var fShader = context.CreateShaderModule("font.frag.spv"))
-                    pipeline = context.device.CreateGraphicsPipeline(null,
-                        new[]
+                using var vShader = context.CreateShaderModule("font.vert.spv");
+                using var fShader = context.CreateShaderModule("font.frag.spv");
+
+                pipeline = context.device.CreateGraphicsPipeline(null,
+                    new[]
+                    {
+                        new PipelineShaderStageCreateInfo { Stage = ShaderStageFlags.Vertex, Module = vShader, Name = "main" },
+                        new PipelineShaderStageCreateInfo { Stage = ShaderStageFlags.Fragment, Module = fShader, Name = "main" },
+                    },
+                    new PipelineVertexInputStateCreateInfo
+                    {
+                        VertexAttributeDescriptions = FontVertex.AttributeDescriptions,
+                        VertexBindingDescriptions = new[] { FontVertex.BindingDescription },
+                    },
+                    new PipelineInputAssemblyStateCreateInfo { Topology = PrimitiveTopology.TriangleStrip },
+                    new PipelineRasterizationStateCreateInfo { LineWidth = 1 },
+                    context.pipelineLayout, context.renderPass, 0, null, -1,
+                    viewportState: new PipelineViewportStateCreateInfo
+                    {
+                        Viewports = new[] { new Viewport(0, 0, context.extent.Width, context.extent.Height, 0, 1) },
+                        Scissors = new[] { new Rect2D(context.extent) },
+                    },
+                    colorBlendState: new PipelineColorBlendStateCreateInfo
+                    {
+                        Attachments = new[]
                         {
-                            new PipelineShaderStageCreateInfo { Stage = ShaderStageFlags.Vertex, Module = vShader, Name = "main" },
-                            new PipelineShaderStageCreateInfo { Stage = ShaderStageFlags.Fragment, Module = fShader, Name = "main" },
-                        },
-                        new PipelineVertexInputStateCreateInfo
-                        {
-                            VertexAttributeDescriptions = FontVertex.AttributeDescriptions,
-                            VertexBindingDescriptions = new[] { FontVertex.BindingDescription },
-                        },
-                        new PipelineInputAssemblyStateCreateInfo { Topology = PrimitiveTopology.TriangleStrip },
-                        new PipelineRasterizationStateCreateInfo { LineWidth = 1 },
-                        context.pipelineLayout, context.renderPass, 0, null, -1,
-                        viewportState: new PipelineViewportStateCreateInfo
-                        {
-                            Viewports = new[] { new Viewport(0, 0, context.extent.Width, context.extent.Height, 0, 1) },
-                            Scissors = new[] { new Rect2D(context.extent) },
-                        },
-                        colorBlendState: new PipelineColorBlendStateCreateInfo
-                        {
-                            Attachments = new[]
+                            new PipelineColorBlendAttachmentState
                             {
-                                new PipelineColorBlendAttachmentState
-                                {
-                                    ColorWriteMask = ColorComponentFlags.R | ColorComponentFlags.G | ColorComponentFlags.B | ColorComponentFlags.A,
-                                }
+                                ColorWriteMask = ColorComponentFlags.R | ColorComponentFlags.G | ColorComponentFlags.B | ColorComponentFlags.A,
                             }
-                        },
-                        multisampleState: new PipelineMultisampleStateCreateInfo
-                        {
-                            SampleShadingEnable = false,
-                            RasterizationSamples = SampleCountFlags.SampleCount1,
-                            MinSampleShading = 1
-                        });
+                        }
+                    },
+                    multisampleState: new PipelineMultisampleStateCreateInfo
+                    {
+                        SampleShadingEnable = false,
+                        RasterizationSamples = SampleCountFlags.SampleCount1,
+                        MinSampleShading = 1
+                    });
 
             }
 

@@ -321,7 +321,7 @@ namespace Pengu.Renderer
             transientTransferCommandPool.FreeCommandBuffers(commandbuffers);
         }
 
-        void TransitionImageLayout(Image image, Format format, ImageLayout oldLayout, ImageLayout newLayout) =>
+        void TransitionImageLayout(Image image, ImageLayout oldLayout, ImageLayout newLayout) =>
             RunTransientCommands(commandBuffer =>
             {
                 var barrier = new ImageMemoryBarrier
@@ -413,9 +413,9 @@ namespace Pengu.Renderer
                 image.BindMemory(imageMemory, 0);
 
                 // transition into a transfer destination, copy the buffer data, and then transition to shader readonly
-                TransitionImageLayout(image, format, ImageLayout.Undefined, ImageLayout.TransferDestinationOptimal);
+                TransitionImageLayout(image, ImageLayout.Undefined, ImageLayout.TransferDestinationOptimal);
                 CopyBufferToImage2D(stagingBuffer, image, (uint)width, (uint)height);
-                TransitionImageLayout(image, format, ImageLayout.TransferDestinationOptimal, ImageLayout.ShaderReadOnlyOptimal);
+                TransitionImageLayout(image, ImageLayout.TransferDestinationOptimal, ImageLayout.ShaderReadOnlyOptimal);
             }
             finally
             {

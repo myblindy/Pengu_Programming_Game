@@ -18,6 +18,8 @@ namespace Pengu.Renderer
             SharpVk.Buffer vertexBuffer, stagingVertexBuffer;
             DeviceMemory vertexBufferMemory, stagingVertexBufferMemory;
             Pipeline pipeline;
+            Image fontTextureImage;
+            DeviceMemory fontTextureImageMemory;
 
             readonly FontVertex[] vertices =
             {
@@ -44,6 +46,9 @@ namespace Pengu.Renderer
                 context.CreateBuffer(size, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer, MemoryPropertyFlags.DeviceLocal,
                     out vertexBuffer, out vertexBufferMemory);
                 context.CopyBuffer(stagingVertexBuffer, vertexBuffer, size);
+
+                // build the font texture objects
+                context.CreateTextureImage("pt_mono.png", context.queueIndices.TransferFamily.Value, out fontTextureImage, out fontTextureImageMemory);
 
                 using (var vShader = context.CreateShaderModule("font.vert.spv"))
                 using (var fShader = context.CreateShaderModule("font.frag.spv"))
@@ -105,11 +110,13 @@ namespace Pengu.Renderer
                     }
 
                     // native resources
+                    fontTextureImage.Dispose();
+                    fontTextureImageMemory.Free();
+                    pipeline.Dispose();
                     vertexBuffer.Dispose();
                     vertexBufferMemory.Free();
                     stagingVertexBuffer.Dispose();
                     stagingVertexBufferMemory.Free();
-                    pipeline.Dispose();
 
                     disposedValue = true;
                 }

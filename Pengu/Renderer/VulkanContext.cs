@@ -9,7 +9,15 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Advanced;
+using System.Runtime.InteropServices;
+using SixLabors.ImageSharp.PixelFormats;
 using static MoreLinq.Extensions.ForEachExtension;
+
+using Image = SharpVk.Image;
+using Buffer = SharpVk.Buffer;
+using Version = SharpVk.Version;
 
 namespace Pengu.Renderer
 {
@@ -26,6 +34,7 @@ namespace Pengu.Renderer
         PhysicalDeviceProperties physicalDeviceProperties;
         Device device;
         Queue graphicsQueue, presentQueue, transferQueue;
+        QueueFamilyIndices queueIndices;
         CommandPool graphicsCommandPool, presentCommandPool, transientTransferCommandPool;
         Swapchain swapChain;
         Image[] swapChainImages;
@@ -119,10 +128,10 @@ namespace Pengu.Renderer
                 applicationInfo: new ApplicationInfo
                 {
                     ApplicationName = "Pengu",
-                    ApplicationVersion = new SharpVk.Version(1, 0, 0),
+                    ApplicationVersion = new Version(1, 0, 0),
                     EngineName = "SharpVk",
-                    EngineVersion = new SharpVk.Version(1, 0, 0),
-                    ApiVersion = new SharpVk.Version(1, 1, 0)
+                    EngineVersion = new Version(1, 0, 0),
+                    ApiVersion = new Version(1, 1, 0)
                 });
 
             // debug layer
@@ -137,13 +146,12 @@ namespace Pengu.Renderer
             // create the surface surface
             surface = instance.CreateGlfw3Surface(window);
 
-            var (pd, qs) = instance.EnumeratePhysicalDevices()
+            (physicalDevice, queueIndices) = instance.EnumeratePhysicalDevices()
                 .Select(device => (device, q: QueueFamilyIndices.Find(device, surface)))
                 .Where(w => w.device.EnumerateDeviceExtensionProperties(null)
                     .Any(extension => extension.ExtensionName == KhrExtensions.Swapchain) && w.q.IsComplete)
                 .First();
-            physicalDevice = pd;
-            var indices = qs.Indices.ToArray();
+            var indices = queueIndices.Indices.ToArray();
 
             physicalDevideMemoryProperties = physicalDevice.GetMemoryProperties();
             physicalDeviceFeatures = physicalDevice.GetFeatures();
@@ -155,12 +163,12 @@ namespace Pengu.Renderer
                 null, KhrExtensions.Swapchain);
 
             // get the queue and create the pool
-            graphicsQueue = device.GetQueue(qs.GraphicsFamily.Value, 0);
-            graphicsCommandPool = device.CreateCommandPool(qs.GraphicsFamily.Value);
-            presentQueue = device.GetQueue(qs.GraphicsFamily.Value, 0);
-            presentCommandPool = device.CreateCommandPool(qs.PresentFamily.Value);
-            transferQueue = device.GetQueue(qs.TransferFamily.Value, 0);
-            transientTransferCommandPool = device.CreateCommandPool(qs.TransferFamily.Value, CommandPoolCreateFlags.Transient);
+            graphicsQueue = device.GetQueue(queueIndices.GraphicsFamily.Value, 0);
+            graphicsCommandPool = device.CreateCommandPool(queueIndices.GraphicsFamily.Value);
+            presentQueue = device.GetQueue(queueIndices.GraphicsFamily.Value, 0);
+            presentCommandPool = device.CreateCommandPool(queueIndices.PresentFamily.Value);
+            transferQueue = device.GetQueue(queueIndices.TransferFamily.Value, 0);
+            transientTransferCommandPool = device.CreateCommandPool(queueIndices.TransferFamily.Value, CommandPoolCreateFlags.Transient);
 
             imageAvailableSemaphore = device.CreateSemaphore();
             renderingFinishedSemaphore = device.CreateSemaphore();
@@ -264,7 +272,7 @@ namespace Pengu.Renderer
             }
         }
 
-        private ShaderModule CreateShaderModule(string filePath)
+        ShaderModule CreateShaderModule(string filePath)
         {
             var fileBytes = File.ReadAllBytes(Path.Combine("Shaders", filePath));
             var shaderData = new uint[(int)Math.Ceiling(fileBytes.Length / 4f)];
@@ -286,7 +294,7 @@ namespace Pengu.Renderer
         }
 
         void CreateBuffer(ulong size, BufferUsageFlags usageFlags, MemoryPropertyFlags memoryPropertyFlags,
-            out SharpVk.Buffer buffer, out DeviceMemory deviceMemory)
+            out Buffer buffer, out DeviceMemory deviceMemory)
         {
             buffer = device.CreateBuffer(size, usageFlags, SharingMode.Exclusive, null);
             var memRequirements = buffer.GetMemoryRequirements();
@@ -294,18 +302,126 @@ namespace Pengu.Renderer
             buffer.BindMemory(deviceMemory, 0);
         }
 
-        void CopyBuffer(SharpVk.Buffer sourceBuffer, SharpVk.Buffer destinationBuffer, ulong size)
+        void CopyBuffer(Buffer sourceBuffer, Buffer destinationBuffer, ulong size) =>
+            RunTransientCommands(
+                commandBuffer => commandBuffer.CopyBuffer(sourceBuffer, destinationBuffer, new BufferCopy { Size = size }));
+
+        void RunTransientCommands(Action<CommandBuffer> action)
         {
-            var transferBuffers = device.AllocateCommandBuffers(transientTransferCommandPool, CommandBufferLevel.Primary, 1);
+            var commandbuffers = device.AllocateCommandBuffers(transientTransferCommandPool, CommandBufferLevel.Primary, 1);
+            commandbuffers[0].Begin(CommandBufferUsageFlags.OneTimeSubmit);
 
-            transferBuffers[0].Begin(CommandBufferUsageFlags.OneTimeSubmit);
-            transferBuffers[0].CopyBuffer(sourceBuffer, destinationBuffer, new BufferCopy { Size = size });
-            transferBuffers[0].End();
+            action(commandbuffers[0]);
 
-            transferQueue.Submit(new SubmitInfo { CommandBuffers = transferBuffers }, null);
+            commandbuffers[0].End();
+
+            transferQueue.Submit(new SubmitInfo { CommandBuffers = commandbuffers }, null);
             transferQueue.WaitIdle();
 
-            transientTransferCommandPool.FreeCommandBuffers(transferBuffers);
+            transientTransferCommandPool.FreeCommandBuffers(commandbuffers);
+        }
+
+        void TransitionImageLayout(Image image, Format format, ImageLayout oldLayout, ImageLayout newLayout) =>
+            RunTransientCommands(commandBuffer =>
+            {
+                var barrier = new ImageMemoryBarrier
+                {
+                    OldLayout = oldLayout,
+                    NewLayout = newLayout,
+                    DestinationQueueFamilyIndex = uint.MaxValue,
+                    SourceQueueFamilyIndex = uint.MaxValue,
+                    Image = image,
+                    SubresourceRange = new ImageSubresourceRange
+                    {
+                        AspectMask = ImageAspectFlags.Color,
+                        LayerCount = 1,
+                        LevelCount = 1,
+                    },
+                };
+                PipelineStageFlags sourceStage, destinationStage;
+
+                if (oldLayout == ImageLayout.Undefined && newLayout == ImageLayout.TransferDestinationOptimal)
+                {
+                    // transfer writes that don't need to wait on anything
+                    barrier.SourceAccessMask = 0;
+                    barrier.DestinationAccessMask = AccessFlags.TransferWrite;
+
+                    sourceStage = PipelineStageFlags.TopOfPipe;
+                    destinationStage = PipelineStageFlags.Transfer;
+                }
+                else if (oldLayout == ImageLayout.TransferDestinationOptimal && newLayout == ImageLayout.ShaderReadOnlyOptimal)
+                {
+                    // shader reads should wait on transfer writes, specifically the shader reads in the fragment shader
+                    // because that's where we're going to use the texture
+                    barrier.SourceAccessMask = AccessFlags.TransferWrite;
+                    barrier.DestinationAccessMask = AccessFlags.ShaderRead;
+
+                    sourceStage = PipelineStageFlags.Transfer;
+                    destinationStage = PipelineStageFlags.FragmentShader;
+                }
+                else
+                    throw new InvalidOperationException($"Undefined image layout transition from {oldLayout} to {newLayout}");
+
+                commandBuffer.PipelineBarrier(sourceStage, destinationStage, null, null, barrier);
+            });
+
+        void CopyBufferToImage2D(Buffer buffer, Image image, uint width, uint height) =>
+            RunTransientCommands(
+                commandBuffer => commandBuffer.CopyBufferToImage(buffer, image, ImageLayout.TransferDestinationOptimal,
+                    new BufferImageCopy
+                    {
+                        ImageSubresource = new ImageSubresourceLayers
+                        {
+                            AspectMask = ImageAspectFlags.Color,
+                            LayerCount = 1,
+                        },
+                        ImageOffset = Offset3D.Zero,
+                        ImageExtent = new Extent3D(width, height, 1),
+                    }));
+
+        void CreateTextureImage(string fn, uint queueFamilyIndex, out Image image, out DeviceMemory imageMemory)
+        {
+            Buffer stagingBuffer = default;
+            DeviceMemory stagingBufferMemory = default;
+
+            // upload to a staging buffer in host memory
+            try
+            {
+                using var imagedata = SixLabors.ImageSharp.Image.Load<Bgra32>(Path.Combine("Media", fn));
+
+                var (width, height) = (imagedata.Width, imagedata.Height);
+                var size = width * height * 4;
+
+                if (!imagedata.TryGetSinglePixelSpan(out var pixelSpan))
+                    throw new InvalidOperationException($"Could not get pixel span for {fn}");
+
+                CreateBuffer((ulong)size, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent,
+                    out stagingBuffer, out stagingBufferMemory);
+                var mappedData = stagingBufferMemory.Map(0, size);
+                unsafe { pixelSpan.CopyTo(new Span<Bgra32>(mappedData.ToPointer(), size)); }
+                stagingBufferMemory.Unmap();
+
+                // create the image
+                const Format format = Format.B8G8R8A8UInt;
+                image = device.CreateImage(ImageType.Image2d, format, new Extent3D((uint)width, (uint)height, 1), 1, 1,
+                    SampleCountFlags.SampleCount1, ImageTiling.Optimal, ImageUsageFlags.Sampled | ImageUsageFlags.TransferDestination,
+                    SharingMode.Exclusive, queueFamilyIndex, ImageLayout.Undefined);
+
+                // allocate memory for the image 
+                var memoryRequirements = image.GetMemoryRequirements();
+                imageMemory = device.AllocateMemory(memoryRequirements.Size, FindMemoryType(memoryRequirements.MemoryTypeBits, MemoryPropertyFlags.DeviceLocal));
+                image.BindMemory(imageMemory, 0);
+
+                // transition into a transfer destination, copy the buffer data, and then transition to shader readonly
+                TransitionImageLayout(image, format, ImageLayout.Undefined, ImageLayout.TransferDestinationOptimal);
+                CopyBufferToImage2D(stagingBuffer, image, (uint)width, (uint)height);
+                TransitionImageLayout(image, format, ImageLayout.TransferDestinationOptimal, ImageLayout.ShaderReadOnlyOptimal);
+            }
+            finally
+            {
+                stagingBuffer?.Dispose();
+                stagingBufferMemory?.Free();
+            }
         }
 
         private void DrawFrame()

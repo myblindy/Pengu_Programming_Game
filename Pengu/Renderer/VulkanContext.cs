@@ -46,7 +46,8 @@ namespace Pengu.Renderer
 
         Font monospaceFont;
 
-        Semaphore imageAvailableSemaphore, renderingFinishedSemaphore;
+        Semaphore[] imageAvailableSemaphores, renderingFinishedSemaphores;
+        Fence[] inflightFences, imagesInFlight;
 
         private struct QueueFamilyIndices
         {
@@ -170,9 +171,6 @@ namespace Pengu.Renderer
             transferQueue = device.GetQueue(queueIndices.TransferFamily.Value, 0);
             transientTransferCommandPool = device.CreateCommandPool(queueIndices.TransferFamily.Value, CommandPoolCreateFlags.Transient);
 
-            imageAvailableSemaphore = device.CreateSemaphore();
-            renderingFinishedSemaphore = device.CreateSemaphore();
-
             var surfaceCapabilities = physicalDevice.GetSurfaceCapabilities(surface);
             var surfaceFormats = physicalDevice.GetSurfaceFormats(surface);
             var surfacePresentModes = physicalDevice.GetSurfacePresentModes(surface);
@@ -196,6 +194,11 @@ namespace Pengu.Renderer
             var swapChainImageCount = surfaceCapabilities.MinImageCount + 1;
             if (surfaceCapabilities.MaxImageCount > 0 && surfaceCapabilities.MaxImageCount < swapChainImageCount)
                 swapChainImageCount = surfaceCapabilities.MaxImageCount;
+
+            imageAvailableSemaphores = Enumerable.Range(0, (int)swapChainImageCount).Select(_ => device.CreateSemaphore()).ToArray();
+            renderingFinishedSemaphores = Enumerable.Range(0, (int)swapChainImageCount).Select(_ => device.CreateSemaphore()).ToArray();
+            inflightFences = Enumerable.Range(0, (int)swapChainImageCount).Select(_ => device.CreateFence(FenceCreateFlags.Signaled)).ToArray();
+            imagesInFlight = new Fence[swapChainImageCount];
 
             // build the swap chain
             swapChain = device.CreateSwapchain(
@@ -258,7 +261,7 @@ namespace Pengu.Renderer
 
             swapChainImageCommandBuffers = device.AllocateCommandBuffers(graphicsCommandPool, CommandBufferLevel.Primary, (uint)swapChainFramebuffers.Length);
 
-            monospaceFont = new Font(this);
+            monospaceFont = new Font(this, "pt_mono");
 
             for (int idx = 0; idx < swapChainFramebuffers.Length; ++idx)
             {
@@ -293,18 +296,18 @@ namespace Pengu.Renderer
             throw new Exception("No compatible memory type.");
         }
 
-        void CreateBuffer(ulong size, BufferUsageFlags usageFlags, MemoryPropertyFlags memoryPropertyFlags,
-            out Buffer buffer, out DeviceMemory deviceMemory)
+        Buffer CreateBuffer(ulong size, BufferUsageFlags usageFlags, MemoryPropertyFlags memoryPropertyFlags, out DeviceMemory deviceMemory)
         {
-            buffer = device.CreateBuffer(size, usageFlags, SharingMode.Exclusive, null);
+            var buffer = device.CreateBuffer(size, usageFlags, SharingMode.Exclusive, null);
             var memRequirements = buffer.GetMemoryRequirements();
             deviceMemory = device.AllocateMemory(memRequirements.Size, FindMemoryType(memRequirements.MemoryTypeBits, memoryPropertyFlags));
             buffer.BindMemory(deviceMemory, 0);
+
+            return buffer;
         }
 
         void CopyBuffer(Buffer sourceBuffer, Buffer destinationBuffer, ulong size) =>
-            RunTransientCommands(
-                commandBuffer => commandBuffer.CopyBuffer(sourceBuffer, destinationBuffer, new BufferCopy { Size = size }));
+            RunTransientCommands(commandBuffer => commandBuffer.CopyBuffer(sourceBuffer, destinationBuffer, new BufferCopy { Size = size }));
 
         void RunTransientCommands(Action<CommandBuffer> action)
         {
@@ -379,7 +382,7 @@ namespace Pengu.Renderer
                         ImageExtent = new Extent3D(width, height, 1),
                     }));
 
-        void CreateTextureImage(string fn, uint queueFamilyIndex, out Image image, out Format format, out DeviceMemory imageMemory)
+        Image CreateTextureImage(string fn, uint queueFamilyIndex, out Format format, out DeviceMemory imageMemory)
         {
             Buffer stagingBuffer = default;
             DeviceMemory stagingBufferMemory = default;
@@ -395,15 +398,14 @@ namespace Pengu.Renderer
                 if (!imagedata.TryGetSinglePixelSpan(out var pixelSpan))
                     throw new InvalidOperationException($"Could not get pixel span for {fn}");
 
-                CreateBuffer((ulong)size, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent,
-                    out stagingBuffer, out stagingBufferMemory);
+                stagingBuffer = CreateBuffer((ulong)size, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingBufferMemory);
                 var mappedData = stagingBufferMemory.Map(0, size);
-                unsafe { pixelSpan.CopyTo(new Span<Bgra32>(mappedData.ToPointer(), size)); }
+                unsafe { pixelSpan.CopyTo(new Span<Bgra32>(mappedData.ToPointer(), size / 4)); }
                 stagingBufferMemory.Unmap();
 
                 // create the image
-                format = Format.B8G8R8A8UInt;
-                image = device.CreateImage(ImageType.Image2d, format, new Extent3D((uint)width, (uint)height, 1), 1, 1,
+                format = Format.B8G8R8A8Srgb;
+                var image = device.CreateImage(ImageType.Image2d, format, new Extent3D((uint)width, (uint)height, 1), 1, 1,
                     SampleCountFlags.SampleCount1, ImageTiling.Optimal, ImageUsageFlags.Sampled | ImageUsageFlags.TransferDestination,
                     SharingMode.Exclusive, queueFamilyIndex, ImageLayout.Undefined);
 
@@ -416,6 +418,8 @@ namespace Pengu.Renderer
                 TransitionImageLayout(image, ImageLayout.Undefined, ImageLayout.TransferDestinationOptimal);
                 CopyBufferToImage2D(stagingBuffer, image, (uint)width, (uint)height);
                 TransitionImageLayout(image, ImageLayout.TransferDestinationOptimal, ImageLayout.ShaderReadOnlyOptimal);
+
+                return image;
             }
             finally
             {
@@ -424,21 +428,33 @@ namespace Pengu.Renderer
             }
         }
 
+        int currentFrame = 0;
         private void DrawFrame()
         {
-            uint nextImage = swapChain.AcquireNextImage(uint.MaxValue, imageAvailableSemaphore, null);
+            device.WaitForFences(inflightFences[currentFrame], true, ulong.MaxValue);
+
+            uint nextImage = swapChain.AcquireNextImage(uint.MaxValue, imageAvailableSemaphores[currentFrame], null);
+
+            if (!(imagesInFlight[nextImage] is null))
+                device.WaitForFences(imagesInFlight[nextImage], true, ulong.MaxValue);
+
+            imagesInFlight[nextImage] = inflightFences[currentFrame];
+
+            device.ResetFences(inflightFences[currentFrame]);
 
             graphicsQueue.Submit(
                 new SubmitInfo
                 {
                     CommandBuffers = new[] { swapChainImageCommandBuffers[nextImage] },
-                    SignalSemaphores = new[] { renderingFinishedSemaphore },
+                    SignalSemaphores = new[] { renderingFinishedSemaphores[currentFrame] },
                     WaitDestinationStageMask = new[] { PipelineStageFlags.ColorAttachmentOutput },
-                    WaitSemaphores = new[] { imageAvailableSemaphore }
+                    WaitSemaphores = new[] { imageAvailableSemaphores[currentFrame] }
                 },
-                null);
+                inflightFences[currentFrame]);
 
-            presentQueue.Present(renderingFinishedSemaphore, swapChain, nextImage);
+            presentQueue.Present(renderingFinishedSemaphores[currentFrame], swapChain, nextImage);
+
+            currentFrame = (currentFrame + 1) % swapChainImages.Length;
         }
 
         static readonly TimeSpan fpsMeasurementInterval = TimeSpan.FromSeconds(2);
@@ -480,8 +496,9 @@ namespace Pengu.Renderer
                 renderPass.Dispose();
                 swapChainImageViews.ForEach(i => i.Dispose());
                 swapChain.Dispose();
-                imageAvailableSemaphore.Dispose();
-                renderingFinishedSemaphore.Dispose();
+                imageAvailableSemaphores.ForEach(s => s.Dispose());
+                renderingFinishedSemaphores.ForEach(s => s.Dispose());
+                inflightFences.ForEach(s => s.Dispose());
                 transientTransferCommandPool.Dispose();
                 graphicsCommandPool.Dispose();
                 presentCommandPool.Dispose();

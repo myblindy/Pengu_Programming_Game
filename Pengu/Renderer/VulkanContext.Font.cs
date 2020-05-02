@@ -5,6 +5,8 @@ using SharpVk;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Linq;
+using System.IO;
+using System.Net;
 
 namespace Pengu.Renderer
 {
@@ -15,6 +17,9 @@ namespace Pengu.Renderer
             const int InitialCharacterSize = 64;
 
             readonly VulkanContext context;
+            private readonly string fontName;
+            private readonly Dictionary<char, (float u0, float v0, float u1, float v1)> Characters = new Dictionary<char, (float u0, float v0, float u1, float v1)>();
+
             SharpVk.Buffer vertexBuffer, stagingVertexBuffer;
             DeviceMemory vertexBufferMemory, stagingVertexBufferMemory;
             PipelineLayout pipelineLayout;
@@ -26,34 +31,52 @@ namespace Pengu.Renderer
             ImageView fontTextureImageView;
             Sampler fontTextureSampler;
 
-            readonly FontVertex[] vertices =
-            {
-                new FontVertex(new Vector4(-0.5f, -0.5f, 0, 0)),
-                new FontVertex(new Vector4(-0.5f, 0.5f, 0, 1)),
-                new FontVertex(new Vector4(0.5f, -0.5f, 1, 0)),
-                new FontVertex(new Vector4(0.5f, 0.5f, 1, 1)),
-            };
+            readonly FontVertex[] vertices;
 
-            public Font(VulkanContext context)
+            public Font(VulkanContext context, string fontName)
             {
                 this.context = context;
+                this.fontName = fontName;
+
+                using (var binfile = new BinaryReader(File.Open(Path.Combine("Media", fontName + ".bin"), FileMode.Open)))
+                {
+                    var length = binfile.BaseStream.Length;
+                    do
+                    {
+                        const float offset = 0.019f;
+                        Characters.Add(binfile.ReadChar(), (binfile.ReadSingle() + offset, binfile.ReadSingle() + offset, binfile.ReadSingle() + offset, binfile.ReadSingle() + offset));
+                    } while (binfile.BaseStream.Position < length);
+                }
+
+                var verts = new List<FontVertex>();
+                float x = -0.7f, sz = 0.1f, y = -sz;
+                foreach (var ch in "Marius")
+                {
+                    var (u0, v0, u1, v1) = Characters[ch];
+                    verts.Add(new FontVertex(new Vector4(x, y, u0, v0)));
+                    verts.Add(new FontVertex(new Vector4(x, y + sz, u0, v1)));
+                    verts.Add(new FontVertex(new Vector4(x + sz, y, u1, v0)));
+                    verts.Add(new FontVertex(new Vector4(x + sz, y + sz, u1, v1)));
+
+                    x += sz;
+                }
+                vertices = verts.ToArray();
 
                 var size = (ulong)(FontVertex.Size * vertices.Length);
 
-                context.CreateBuffer(size, BufferUsageFlags.TransferSource,
-                    MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingVertexBuffer, out stagingVertexBufferMemory);
+                stagingVertexBuffer = context.CreateBuffer(size, BufferUsageFlags.TransferSource,
+                    MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingVertexBufferMemory);
 
                 var memoryBuffer = stagingVertexBufferMemory.Map(0, size);
                 for (int idx = 0; idx < vertices.Length; ++idx)
                     Marshal.StructureToPtr(vertices[idx], memoryBuffer + (int)(idx * FontVertex.Size), false);
                 stagingVertexBufferMemory.Unmap();
 
-                context.CreateBuffer(size, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer, MemoryPropertyFlags.DeviceLocal,
-                    out vertexBuffer, out vertexBufferMemory);
+                vertexBuffer = context.CreateBuffer(size, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer, MemoryPropertyFlags.DeviceLocal, out vertexBufferMemory);
                 context.CopyBuffer(stagingVertexBuffer, vertexBuffer, size);
 
                 // build the font texture objects
-                context.CreateTextureImage("pt_mono.png", context.queueIndices.TransferFamily.Value, out fontTextureImage, out var format, out fontTextureImageMemory);
+                fontTextureImage = context.CreateTextureImage("pt_mono.png", context.queueIndices.TransferFamily.Value, out var format, out fontTextureImageMemory);
                 fontTextureImageView = context.device.CreateImageView(fontTextureImage, ImageViewType.ImageView2d, format, ComponentMapping.Identity,
                     new ImageSubresourceRange { AspectMask = ImageAspectFlags.Color, LayerCount = 1, LevelCount = 1 });
 
@@ -77,7 +100,7 @@ namespace Pengu.Renderer
                     StageFlags = ShaderStageFlags.Fragment,
                 });
 
-                descriptorSets = context.device.AllocateDescriptorSets(descriptorPool, Enumerable.Range(0, context.swapChainImages.Length).Select(_ => descriptorSetLayout).ToArray());
+                descriptorSets = context.device.AllocateDescriptorSets(descriptorPool, Enumerable.Repeat(descriptorSetLayout, context.swapChainImages.Length).ToArray());
 
                 for (int idx = 0; idx < context.swapChainImages.Length; ++idx)
                     context.device.UpdateDescriptorSets(
@@ -189,7 +212,7 @@ namespace Pengu.Renderer
 
         struct FontVertex
         {
-            Vector4 posUv;
+            public Vector4 posUv;
 
             public FontVertex(Vector4 posUv) => this.posUv = posUv;
 

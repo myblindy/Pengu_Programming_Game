@@ -266,7 +266,7 @@ namespace Pengu.Renderer
 
                 commandBuffer.Begin(CommandBufferUsageFlags.SimultaneousUse);
                 commandBuffer.BeginRenderPass(renderPass, swapChainFramebuffers[idx], new Rect2D(extent), new ClearValue(), SubpassContents.Inline);
-                monospaceFont.Draw(commandBuffer);
+                monospaceFont.Draw(commandBuffer, idx);
                 commandBuffer.EndRenderPass();
                 commandBuffer.End();
             }
@@ -379,7 +379,7 @@ namespace Pengu.Renderer
                         ImageExtent = new Extent3D(width, height, 1),
                     }));
 
-        void CreateTextureImage(string fn, uint queueFamilyIndex, out Image image, out DeviceMemory imageMemory)
+        void CreateTextureImage(string fn, uint queueFamilyIndex, out Image image, out Format format, out DeviceMemory imageMemory)
         {
             Buffer stagingBuffer = default;
             DeviceMemory stagingBufferMemory = default;
@@ -402,7 +402,7 @@ namespace Pengu.Renderer
                 stagingBufferMemory.Unmap();
 
                 // create the image
-                const Format format = Format.B8G8R8A8UInt;
+                format = Format.B8G8R8A8UInt;
                 image = device.CreateImage(ImageType.Image2d, format, new Extent3D((uint)width, (uint)height, 1), 1, 1,
                     SampleCountFlags.SampleCount1, ImageTiling.Optimal, ImageUsageFlags.Sampled | ImageUsageFlags.TransferDestination,
                     SharingMode.Exclusive, queueFamilyIndex, ImageLayout.Undefined);

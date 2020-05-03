@@ -18,6 +18,8 @@ using static MoreLinq.Extensions.ForEachExtension;
 using Image = SharpVk.Image;
 using Buffer = SharpVk.Buffer;
 using Version = SharpVk.Version;
+using System.Numerics;
+using System.Collections.Specialized;
 
 namespace Pengu.Renderer
 {
@@ -42,9 +44,12 @@ namespace Pengu.Renderer
         Framebuffer[] swapChainFramebuffers;
         RenderPass renderPass;
         PipelineLayout pipelineLayout;
+
         CommandBuffer[] swapChainImageCommandBuffers;
+        BitVector32 swapChainImageCommandBuffersDirty;
 
         Font monospaceFont;
+        FontString fontStringFps, fontStringCenter;
 
         Semaphore[] imageAvailableSemaphores, renderingFinishedSemaphores;
         Fence[] inflightFences, imagesInFlight;
@@ -262,17 +267,8 @@ namespace Pengu.Renderer
             swapChainImageCommandBuffers = device.AllocateCommandBuffers(graphicsCommandPool, CommandBufferLevel.Primary, (uint)swapChainFramebuffers.Length);
 
             monospaceFont = new Font(this, "pt_mono");
-
-            for (int idx = 0; idx < swapChainFramebuffers.Length; ++idx)
-            {
-                var commandBuffer = swapChainImageCommandBuffers[idx];
-
-                commandBuffer.Begin(CommandBufferUsageFlags.SimultaneousUse);
-                commandBuffer.BeginRenderPass(renderPass, swapChainFramebuffers[idx], new Rect2D(extent), new ClearValue(), SubpassContents.Inline);
-                monospaceFont.Draw(commandBuffer, idx);
-                commandBuffer.EndRenderPass();
-                commandBuffer.End();
-            }
+            fontStringFps = monospaceFont.AllocateString(new Vector2(-.9f, -.9f), .06f);
+            fontStringCenter = monospaceFont.AllocateString(new Vector2(0, 0), .06f);
         }
 
         ShaderModule CreateShaderModule(string filePath)
@@ -442,6 +438,27 @@ namespace Pengu.Renderer
 
             device.ResetFences(inflightFences[currentFrame]);
 
+            if (monospaceFont.IsCommandBufferDirty)
+            {
+                Enumerable.Range(0, swapChainImageCommandBuffers.Length).ForEach(idx => swapChainImageCommandBuffersDirty[idx] = true);
+                monospaceFont.IsCommandBufferDirty = false;
+            }
+
+            monospaceFont.UpdateBuffer();
+
+            if (swapChainImageCommandBuffersDirty[(int)nextImage])
+            {
+                var commandBuffer = swapChainImageCommandBuffers[nextImage];
+
+                commandBuffer.Begin(CommandBufferUsageFlags.SimultaneousUse);
+                commandBuffer.BeginRenderPass(renderPass, swapChainFramebuffers[nextImage], new Rect2D(extent), new ClearValue(), SubpassContents.Inline);
+                monospaceFont.Draw(commandBuffer, (int)nextImage);
+                commandBuffer.EndRenderPass();
+                commandBuffer.End();
+
+                swapChainImageCommandBuffersDirty[(int)nextImage] = false;
+            }
+
             graphicsQueue.Submit(
                 new SubmitInfo
                 {
@@ -461,17 +478,28 @@ namespace Pengu.Renderer
         DateTime nextFpsMeasurement = DateTime.Now + fpsMeasurementInterval;
         int framesRendered;
 
+        static readonly TimeSpan centerUpdateInterval = TimeSpan.FromMilliseconds(300);
+        DateTime nextCenterUpdate = DateTime.Now + centerUpdateInterval;
+        Random Random = new Random();
+
         internal void Run()
         {
             while (!Glfw3.WindowShouldClose(window))
             {
-                ++framesRendered;
                 var now = DateTime.Now;
+
+                ++framesRendered;
                 if (now >= nextFpsMeasurement)
                 {
-                    Debug.WriteLine($"FPS: {framesRendered / (now - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds}");
+                    fontStringFps.Value = $"FPS: {framesRendered / (now - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds}";
                     framesRendered = 0;
                     nextFpsMeasurement = now + fpsMeasurementInterval;
+                }
+
+                if (now >= nextCenterUpdate)
+                {
+                    fontStringCenter.Value = ((char)('a' + Random.Next('z' - 'a' + 1))).ToString();
+                    nextCenterUpdate = now + centerUpdateInterval;
                 }
 
                 DrawFrame();

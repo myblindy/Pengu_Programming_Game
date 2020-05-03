@@ -162,9 +162,9 @@ namespace Pengu.Renderer
                             // build the string vertices
                             FontVertex* vertexPtr = (FontVertex*)memoryBuffer.ToPointer();
                             foreach (var fs in fontStrings)
-                            {
-                                var x = fs.Position.X;
                                 if (!string.IsNullOrWhiteSpace(fs.Value))
+                                {
+                                    var x = fs.Position.X;
                                     foreach (var ch in fs.Value)
                                     {
                                         var (u0, v0, u1, v1) = Characters[ch];
@@ -179,7 +179,7 @@ namespace Pengu.Renderer
 
                                         x += fs.Size;
                                     }
-                            }
+                                }
 
                             stagingVertexBufferMemory.Unmap();
 

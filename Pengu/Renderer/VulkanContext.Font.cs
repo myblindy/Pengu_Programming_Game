@@ -8,6 +8,7 @@ using System.Linq;
 using System.IO;
 using System.Net;
 using Pengu.Support;
+using System.Runtime.CompilerServices;
 
 namespace Pengu.Renderer
 {
@@ -31,8 +32,7 @@ namespace Pengu.Renderer
             ImageView fontTextureImageView;
             Sampler fontTextureSampler;
 
-            FontVertex[] vertices = new FontVertex[InitialCharacterSize * 6];
-            uint usedVertices;
+            uint usedVertices, maxVertices = InitialCharacterSize * 6;
 
             readonly List<FontString> fontStrings = new List<FontString>();
 
@@ -53,7 +53,7 @@ namespace Pengu.Renderer
                     } while (binfile.BaseStream.Position < length);
                 }
 
-                var size = (ulong)(FontVertex.Size * vertices.Length);
+                var size = (ulong)(FontVertex.Size * maxVertices);
 
                 stagingVertexBuffer = context.CreateBuffer(size, BufferUsageFlags.TransferSource,
                     MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingVertexBufferMemory);
@@ -152,38 +152,39 @@ namespace Pengu.Renderer
                 {
                     var charCount = fontStrings.Sum(fs => fs.Value?.Length ?? 0);
                     usedVertices = (uint)(charCount * 6);
-                    if (vertices.Length < usedVertices)
+                    if (maxVertices < usedVertices)
                         throw new NotImplementedException();
                     else
-                    {
-                        // build the string vertices
-                        var idx = 0;
-                        foreach (var fs in fontStrings)
+                        unsafe
                         {
-                            var x = fs.Position.X;
-                            if (!string.IsNullOrWhiteSpace(fs.Value))
-                                foreach (var ch in fs.Value)
-                                {
-                                    var (u0, v0, u1, v1) = Characters[ch];
+                            var memoryBuffer = stagingVertexBufferMemory.Map(0, usedVertices * FontVertex.Size);
 
-                                    vertices[idx++] = new FontVertex(new Vector4(x, fs.Position.Y, u0, v0));
-                                    vertices[idx++] = new FontVertex(new Vector4(x, fs.Position.Y + fs.Size, u0, v1));
-                                    vertices[idx++] = new FontVertex(new Vector4(x + fs.Size, fs.Position.Y, u1, v0));
+                            // build the string vertices
+                            FontVertex* vertexPtr = (FontVertex*)memoryBuffer.ToPointer();
+                            foreach (var fs in fontStrings)
+                            {
+                                var x = fs.Position.X;
+                                if (!string.IsNullOrWhiteSpace(fs.Value))
+                                    foreach (var ch in fs.Value)
+                                    {
+                                        var (u0, v0, u1, v1) = Characters[ch];
 
-                                    vertices[idx++] = new FontVertex(new Vector4(x + fs.Size, fs.Position.Y, u1, v0));
-                                    vertices[idx++] = new FontVertex(new Vector4(x, fs.Position.Y + fs.Size, u0, v1));
-                                    vertices[idx++] = new FontVertex(new Vector4(x + fs.Size, fs.Position.Y + fs.Size, u1, v1));
+                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x, fs.Position.Y, u0, v0));
+                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x, fs.Position.Y + fs.Size, u0, v1));
+                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x + fs.Size, fs.Position.Y, u1, v0));
 
-                                    x += fs.Size;
-                                }
+                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x + fs.Size, fs.Position.Y, u1, v0));
+                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x, fs.Position.Y + fs.Size, u0, v1));
+                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x + fs.Size, fs.Position.Y + fs.Size, u1, v1));
+
+                                        x += fs.Size;
+                                    }
+                            }
+
+                            stagingVertexBufferMemory.Unmap();
+
+                            context.CopyBuffer(stagingVertexBuffer, vertexBuffer, usedVertices * FontVertex.Size);
                         }
-
-                        var memoryBuffer = stagingVertexBufferMemory.Map(0, usedVertices * FontVertex.Size);
-                        vertices.AsSpan(0, (int)usedVertices).CopyTo(memoryBuffer, (int)(usedVertices * FontVertex.Size));
-                        stagingVertexBufferMemory.Unmap();
-
-                        context.CopyBuffer(stagingVertexBuffer, vertexBuffer, usedVertices * FontVertex.Size);
-                    }
 
                     IsBufferDataDirty = false;
                 }

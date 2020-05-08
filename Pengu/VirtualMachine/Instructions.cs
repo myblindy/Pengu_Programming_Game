@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
 
 namespace Pengu.VirtualMachine
 {
@@ -49,186 +50,186 @@ namespace Pengu.VirtualMachine
 	[System.CodeDom.Compiler.GeneratedCode("Instructions.tt", null)]
 	internal static class InstructionSet
 	{
-		public static readonly Dictionary<Instruction, Func<VM, int, int>> InstructionDefinitions =
-			new Dictionary<Instruction, Func<VM, int, int>>()
+		public static readonly Dictionary<Instruction, Func<VM, ushort, ushort>> InstructionDefinitions =
+			new Dictionary<Instruction, Func<VM, ushort, ushort>>()
 		{
 							[Instruction.End] = (vm, m) =>
 				{
-					return -1;
+					return ushort.MaxValue;
 				},
 							[Instruction.Mov_Reg_I8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] = vm.Memory[m + 1]; return m + 2;
+					vm.Registers[vm.Memory[m]] = vm.Memory[m + 1]; return (ushort)(m + 2);
 				},
 							[Instruction.Mov_Reg_Reg] = (vm, m) =>
 				{
 					
 			I8ToI4I4(vm.Memory[m], out var r0, out var r1);
 			vm.Registers[r0] = vm.Registers[r1];
-			return m + 1;
+			return (ushort)(m + 1);
 				},
 							[Instruction.Mov_Reg_PI8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] = vm.Memory[vm.Memory[m + 1]]; return m + 2;
+					vm.Registers[vm.Memory[m]] = vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 				},
 							[Instruction.Mov_Reg_PReg] = (vm, m) =>
 				{
 					
 		    I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] = vm.Registers[r1];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.Mov_PI8_I8] = (vm, m) =>
 				{
-					vm.Memory[vm.Memory[m]] = vm.Memory[m + 1]; return m + 2;
+					vm.Memory[vm.Memory[m]] = vm.Memory[m + 1]; return (ushort)(m + 2);
 				},
 							[Instruction.Mov_PI8_Reg] = (vm, m) =>
 				{
-					vm.Memory[vm.Memory[m]] = (byte)vm.Registers[vm.Memory[m + 1]]; return m + 2;
+					vm.Memory[vm.Memory[m]] = (byte)vm.Registers[vm.Memory[m + 1]]; return (ushort)(m + 2);
 				},
 							[Instruction.Mov_PI8_PI8] = (vm, m) =>
 				{
-					vm.Memory[vm.Memory[m]] = vm.Memory[vm.Memory[m + 1]]; return m + 2;
+					vm.Memory[vm.Memory[m]] = vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 				},
 							[Instruction.Mov_PI8_PReg] = (vm, m) =>
 				{
-					vm.Memory[vm.Memory[m]] = vm.Memory[vm.Registers[vm.Memory[m + 1]]]; return m + 2;
+					vm.Memory[vm.Memory[m]] = vm.Memory[vm.Registers[vm.Memory[m + 1]]]; return (ushort)(m + 2);
 				},
 							[Instruction.Mov_PReg_I8] = (vm, m) =>
 				{
-					vm.Memory[vm.Registers[vm.Memory[m]]] = vm.Memory[m + 1]; return m + 2;
+					vm.Memory[vm.Registers[vm.Memory[m]]] = vm.Memory[m + 1]; return (ushort)(m + 2);
 				},
 							[Instruction.Mov_PReg_Reg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Memory[vm.Registers[r0]] = (byte)vm.Registers[r1];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.Mov_PReg_PI8] = (vm, m) =>
 				{
-					vm.Memory[vm.Registers[vm.Memory[m]]] = vm.Memory[vm.Memory[m + 1]]; return m + 2;
+					vm.Memory[vm.Registers[vm.Memory[m]]] = vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 				},
 							[Instruction.Mov_PReg_PReg] = (vm, m) =>
 				{
 					
 			I8ToI4I4(vm.Memory[m], out var r0, out var r1);
 			vm.Memory[vm.Registers[r0]] = vm.Memory[vm.Registers[r1]];
-			return m + 1;
+			return (ushort)(m + 1);
 				},
 							[Instruction.AddI_Reg_I8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] += vm.Memory[m + 1]; return m + 2;
+					vm.Registers[vm.Memory[m]] += vm.Memory[m + 1]; return (ushort)(m + 2);
 				},
 							[Instruction.AddI_Reg_Reg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] += vm.Registers[r1];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.AddI_Reg_PI8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] += vm.Memory[vm.Memory[m + 1]]; return m + 2;
+					vm.Registers[vm.Memory[m]] += vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 				},
 							[Instruction.AddI_Reg_PReg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] += vm.Memory[vm.Registers[r1]];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.SubI_Reg_I8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] -= vm.Memory[m + 1]; return m + 2;
+					vm.Registers[vm.Memory[m]] -= vm.Memory[m + 1]; return (ushort)(m + 2);
 				},
 							[Instruction.SubI_Reg_Reg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] -= vm.Registers[r1];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.SubI_Reg_PI8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] -= vm.Memory[vm.Memory[m + 1]]; return m + 2;
+					vm.Registers[vm.Memory[m]] -= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 				},
 							[Instruction.SubI_Reg_PReg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] -= vm.Memory[vm.Registers[r1]];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.MulI_Reg_I8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] *= vm.Memory[m + 1]; return m + 2;
+					vm.Registers[vm.Memory[m]] *= vm.Memory[m + 1]; return (ushort)(m + 2);
 				},
 							[Instruction.MulI_Reg_Reg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] *= vm.Registers[r1];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.MulI_Reg_PI8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] *= vm.Memory[vm.Memory[m + 1]]; return m + 2;
+					vm.Registers[vm.Memory[m]] *= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 				},
 							[Instruction.MulI_Reg_PReg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] *= vm.Memory[vm.Registers[r1]];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.Int_I8] = (vm, m) =>
 				{
-					return m + 1;
+					return (ushort)(m + 1);
 				},
 							[Instruction.DivI_Reg_I8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] /= vm.Memory[m + 1]; return m + 2;
+					vm.Registers[vm.Memory[m]] /= vm.Memory[m + 1]; return (ushort)(m + 2);
 				},
 							[Instruction.DivI_Reg_Reg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] /= vm.Registers[r1];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.DivI_Reg_PI8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] /= vm.Memory[vm.Memory[m + 1]]; return m + 2;
+					vm.Registers[vm.Memory[m]] /= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 				},
 							[Instruction.DivI_Reg_PReg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] /= vm.Memory[vm.Registers[r1]];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.ModI_Reg_I8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] %= vm.Memory[m + 1]; return m + 2;
+					vm.Registers[vm.Memory[m]] %= vm.Memory[m + 1]; return (ushort)(m + 2);
 				},
 							[Instruction.ModI_Reg_Reg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] %= vm.Registers[r1];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 							[Instruction.ModI_Reg_PI8] = (vm, m) =>
 				{
-					vm.Registers[vm.Memory[m]] %= vm.Memory[vm.Memory[m + 1]]; return m + 2;
+					vm.Registers[vm.Memory[m]] %= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 				},
 							[Instruction.ModI_Reg_PReg] = (vm, m) =>
 				{
 					
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] %= vm.Memory[vm.Registers[r1]];
-            return m + 1;
+            return (ushort)(m + 1);
 				},
 					};
 
@@ -484,7 +485,7 @@ namespace Pengu.VirtualMachine
 
         public static void Assemble(string s, VM vm)
         {
-			int memidx = 0;
+			ushort memidx = 0;
 			int i0, i1;
 
             var reader = new StringReader(s);
@@ -541,7 +542,7 @@ namespace Pengu.VirtualMachine
                 if (tokens.Count == 1 && IsAtAddress(tokens[0], out i0))
                 {
                     // @addr
-                    memidx = i0;
+                    memidx = (ushort)i0;
                     continue;
                 }
 
@@ -554,7 +555,7 @@ namespace Pengu.VirtualMachine
 
 				if(tokens.Count == 1 && tokens[0].Equals("ORG", StringComparison.OrdinalIgnoreCase))
 				{
-					vm.StartInstructionPointer = vm.InstructionPointer = memidx;
+                    MemoryMarshal.Write(vm.Memory.AsSpan(^2..), ref memidx);
 					continue;
 				}
 

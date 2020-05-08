@@ -16,7 +16,7 @@ namespace Pengu.Renderer
     {
         class Font : IDisposable
         {
-            const int InitialCharacterSize = 64;
+            const int InitialCharacterSize = 2000;
 
             readonly VulkanContext context;
             private readonly Dictionary<char, (float u0, float v0, float u1, float v1)> Characters = new Dictionary<char, (float u0, float v0, float u1, float v1)>();
@@ -32,7 +32,8 @@ namespace Pengu.Renderer
             ImageView fontTextureImageView;
             Sampler fontTextureSampler;
 
-            uint usedVertices, maxVertices = InitialCharacterSize * 6;
+            public uint MaxVertices { get; private set; } = InitialCharacterSize * 6;
+            public uint UsedVertices { get; private set; }
 
             readonly List<FontString> fontStrings = new List<FontString>();
 
@@ -53,7 +54,7 @@ namespace Pengu.Renderer
                     } while (binfile.BaseStream.Position < length);
                 }
 
-                var size = (ulong)(FontVertex.Size * maxVertices);
+                var size = (ulong)(FontVertex.Size * MaxVertices);
 
                 stagingVertexBuffer = context.CreateBuffer(size, BufferUsageFlags.TransferSource,
                     MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingVertexBufferMemory);
@@ -150,14 +151,14 @@ namespace Pengu.Renderer
             {
                 if (IsBufferDataDirty)
                 {
-                    var charCount = fontStrings.Sum(fs => fs.Value?.Length ?? 0);
-                    usedVertices = (uint)(charCount * 6);
-                    if (maxVertices < usedVertices)
+                    var charCount = fontStrings.Sum(fs => fs.Length);
+                    UsedVertices = (uint)(charCount * 6);
+                    if (MaxVertices < UsedVertices)
                         throw new NotImplementedException();
                     else
                         unsafe
                         {
-                            var memoryBuffer = stagingVertexBufferMemory.Map(0, usedVertices * FontVertex.Size);
+                            var memoryBuffer = stagingVertexBufferMemory.Map(0, UsedVertices * FontVertex.Size);
 
                             // build the string vertices
                             FontVertex* vertexPtr = (FontVertex*)memoryBuffer.ToPointer();
@@ -165,25 +166,34 @@ namespace Pengu.Renderer
                                 if (!string.IsNullOrWhiteSpace(fs.Value))
                                 {
                                     var x = fs.Position.X;
+                                    var y = fs.Position.Y;
                                     foreach (var ch in fs.Value)
-                                    {
-                                        var (u0, v0, u1, v1) = Characters[ch];
+                                        if (ch == '\n')
+                                        {
+                                            x = fs.Position.X;
+                                            y += fs.Size;
+                                        }
+                                        else if (ch == ' ')
+                                            x += fs.Size;
+                                        else
+                                        {
+                                            var (u0, v0, u1, v1) = Characters[ch];
 
-                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x, fs.Position.Y, u0, v0));
-                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x, fs.Position.Y + fs.Size, u0, v1));
-                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x + fs.Size, fs.Position.Y, u1, v0));
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0));
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1));
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0));
 
-                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x + fs.Size, fs.Position.Y, u1, v0));
-                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x, fs.Position.Y + fs.Size, u0, v1));
-                                        Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x + fs.Size, fs.Position.Y + fs.Size, u1, v1));
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0));
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1));
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y + fs.Size, u1, v1));
 
-                                        x += fs.Size;
-                                    }
+                                            x += fs.Size;
+                                        }
                                 }
 
                             stagingVertexBufferMemory.Unmap();
 
-                            context.CopyBuffer(stagingVertexBuffer, vertexBuffer, usedVertices * FontVertex.Size);
+                            context.CopyBuffer(stagingVertexBuffer, vertexBuffer, UsedVertices * FontVertex.Size);
                         }
 
                     IsBufferDataDirty = false;
@@ -195,7 +205,7 @@ namespace Pengu.Renderer
                 commandBuffer.BindPipeline(PipelineBindPoint.Graphics, pipeline);
                 commandBuffer.BindVertexBuffers(0, vertexBuffer, (DeviceSize)0);
                 commandBuffer.BindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout, 0, descriptorSets[idx], null);
-                commandBuffer.Draw(usedVertices, 1, 0, 0);
+                commandBuffer.Draw(UsedVertices, 1, 0, 0);
             }
 
             public FontString AllocateString(Vector2 pos, float size)
@@ -261,13 +271,17 @@ namespace Pengu.Renderer
             string value;
             public string Value
             {
-                get => value; set
+                get => value;
+                set
                 {
                     font.IsCommandBufferDirty = (string.IsNullOrWhiteSpace(this.value) ? 0 : this.value.Length) != (string.IsNullOrWhiteSpace(value) ? 0 : value.Length);
                     this.value = value;
+                    Length = value.Count(c => c != '\n' && c != ' ');
                     font.IsBufferDataDirty = true;
                 }
             }
+
+            public int Length { get; private set; }
 
             Vector2 position;
             public Vector2 Position { get => position; set { position = value; font.IsBufferDataDirty = true; font.IsCommandBufferDirty = true; } }

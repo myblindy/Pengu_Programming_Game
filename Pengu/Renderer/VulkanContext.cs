@@ -13,13 +13,13 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using System.Runtime.InteropServices;
 using SixLabors.ImageSharp.PixelFormats;
+using System.Numerics;
+using System.Collections.Specialized;
 using static MoreLinq.Extensions.ForEachExtension;
 
 using Image = SharpVk.Image;
 using Buffer = SharpVk.Buffer;
 using Version = SharpVk.Version;
-using System.Numerics;
-using System.Collections.Specialized;
 
 namespace Pengu.Renderer
 {
@@ -31,9 +31,6 @@ namespace Pengu.Renderer
         DebugReportCallback debugReportCallback;
         Surface surface;
         PhysicalDevice physicalDevice;
-        PhysicalDeviceMemoryProperties physicalDevideMemoryProperties;
-        PhysicalDeviceFeatures physicalDeviceFeatures;
-        PhysicalDeviceProperties physicalDeviceProperties;
         Device device;
         Queue graphicsQueue, presentQueue, transferQueue;
         QueueFamilyIndices queueIndices;
@@ -43,13 +40,14 @@ namespace Pengu.Renderer
         ImageView[] swapChainImageViews;
         Framebuffer[] swapChainFramebuffers;
         RenderPass renderPass;
-        PipelineLayout pipelineLayout;
 
         CommandBuffer[] swapChainImageCommandBuffers;
         BitVector32 swapChainImageCommandBuffersDirty;
 
         Font monospaceFont;
-        FontString fontStringFps, fontStringCenter;
+        FontString fontStringFps;
+
+        GameSurface gameSurface;
 
         Semaphore[] imageAvailableSemaphores, renderingFinishedSemaphores;
         Fence[] inflightFences, imagesInFlight;
@@ -159,10 +157,6 @@ namespace Pengu.Renderer
                 .First();
             var indices = queueIndices.Indices.ToArray();
 
-            physicalDevideMemoryProperties = physicalDevice.GetMemoryProperties();
-            physicalDeviceFeatures = physicalDevice.GetFeatures();
-            physicalDeviceProperties = physicalDevice.GetProperties();
-
             // create the logical device
             device = physicalDevice.CreateDevice(
                 indices.Select(idx => new DeviceQueueCreateInfo { QueueFamilyIndex = idx, QueuePriorities = new[] { 1f } }).ToArray(),
@@ -262,13 +256,12 @@ namespace Pengu.Renderer
                 .Select(iv => device.CreateFramebuffer(renderPass, iv, extent.Width, extent.Height, 1))
                 .ToArray();
 
-            pipelineLayout = device.CreatePipelineLayout(null, null);
-
             swapChainImageCommandBuffers = device.AllocateCommandBuffers(graphicsCommandPool, CommandBufferLevel.Primary, (uint)swapChainFramebuffers.Length);
 
             monospaceFont = new Font(this, "pt_mono");
-            fontStringFps = monospaceFont.AllocateString(new Vector2(-.9f, -.9f), .06f);
-            fontStringCenter = monospaceFont.AllocateString(new Vector2(0, 0), .06f);
+            fontStringFps = monospaceFont.AllocateString(new Vector2(-1f * extent.AspectRatio, -.995f), .033f);
+
+            gameSurface = new GameSurface(this);
         }
 
         ShaderModule CreateShaderModule(string filePath)
@@ -424,6 +417,11 @@ namespace Pengu.Renderer
             }
         }
 
+        private void UpdateLogic()
+        {
+            gameSurface.UpdateLogic();
+        }
+
         int currentFrame = 0;
         private void DrawFrame()
         {
@@ -478,10 +476,6 @@ namespace Pengu.Renderer
         DateTime nextFpsMeasurement = DateTime.Now + fpsMeasurementInterval;
         int framesRendered;
 
-        static readonly TimeSpan centerUpdateInterval = TimeSpan.FromMilliseconds(300);
-        DateTime nextCenterUpdate = DateTime.Now + centerUpdateInterval;
-        Random Random = new Random();
-
         internal void Run()
         {
             while (!Glfw3.WindowShouldClose(window))
@@ -491,17 +485,12 @@ namespace Pengu.Renderer
                 ++framesRendered;
                 if (now >= nextFpsMeasurement)
                 {
-                    fontStringFps.Value = $"FPS: {framesRendered / (now - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds}";
+                    fontStringFps.Value = $"FPS: {framesRendered / (now - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds:0.00} Font Verts: {monospaceFont.UsedVertices} used out of {monospaceFont.MaxVertices}";
                     framesRendered = 0;
                     nextFpsMeasurement = now + fpsMeasurementInterval;
                 }
 
-                if (now >= nextCenterUpdate)
-                {
-                    fontStringCenter.Value = ((char)('a' + Random.Next('z' - 'a' + 1))).ToString();
-                    nextCenterUpdate = now + centerUpdateInterval;
-                }
-
+                UpdateLogic();
                 DrawFrame();
 
                 Glfw3.PollEvents();
@@ -520,7 +509,6 @@ namespace Pengu.Renderer
                 }
 
                 monospaceFont.Dispose();
-                pipelineLayout.Dispose();
                 renderPass.Dispose();
                 swapChainImageViews.ForEach(i => i.Dispose());
                 swapChain.Dispose();

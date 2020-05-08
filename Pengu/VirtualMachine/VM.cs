@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
 
@@ -9,7 +10,7 @@ namespace Pengu.VirtualMachine
     {
         public readonly int[] Registers;
         public readonly byte[] Memory;
-        public int StartInstructionPointer, InstructionPointer;
+        public ushort StartInstructionPointer, InstructionPointer;
 
         public VM(int registers, int memory)
         {
@@ -17,21 +18,16 @@ namespace Pengu.VirtualMachine
             Memory = new byte[memory];
         }
 
-        public int LoadCode(IList<byte> code, int ipOffset = 0)
-        {
-            code.CopyTo(Memory, Memory.Length - code.Count);
-            StartInstructionPointer = InstructionPointer = code.Count + ipOffset;
-            return code.Count;
-        }
+        public void Reset() => InstructionPointer = BitConverter.ToUInt16(Memory, Memory.Length - 2);
 
-        public int RunNextInstruction(int cycles = 1)
+        public ushort RunNextInstruction(int cycles = 1)
         {
             while (cycles-- > 0 && InstructionPointer < Memory.Length - 1)
             {
-                int nextip = -1;
+                ushort nextIp = ushort.MaxValue;
                 if (InstructionSet.InstructionDefinitions.TryGetValue((Instruction)Memory[InstructionPointer], out var fn))
-                    nextip = fn(this, InstructionPointer + 1);
-                if (nextip < 0) break; else InstructionPointer = nextip;
+                    nextIp = fn(this, (ushort)(InstructionPointer + 1));
+                if (nextIp < 0) break; else InstructionPointer = nextIp;
             }
 
             return 1;

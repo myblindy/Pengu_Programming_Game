@@ -28,6 +28,7 @@ subi r0 6
 mov [0] r0
 end", vm);
 
+            vm.Reset();
             vm.RunNextInstruction(int.MaxValue);
 
             Debug.WriteLine($"R: {vm.Registers[0]:X4} MEM: {string.Join(" ", vm.Memory.Select(m => m.ToString("X2")))}");

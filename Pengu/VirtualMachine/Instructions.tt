@@ -8,82 +8,82 @@
 <#
 	(string name, string instruction)[] instructions = new[]
 	{
-		("End", @"return -1;"),
-		("Mov_Reg_I8", @"vm.Registers[vm.Memory[m]] = vm.Memory[m + 1]; return m + 2;"),
+		("End", @"return ushort.MaxValue;"),
+		("Mov_Reg_I8", @"vm.Registers[vm.Memory[m]] = vm.Memory[m + 1]; return (ushort)(m + 2);"),
 		("Mov_Reg_Reg", @"
 			I8ToI4I4(vm.Memory[m], out var r0, out var r1);
 			vm.Registers[r0] = vm.Registers[r1];
-			return m + 1;"),
-		("Mov_Reg_PI8", @"vm.Registers[vm.Memory[m]] = vm.Memory[vm.Memory[m + 1]]; return m + 2;"),
+			return (ushort)(m + 1);"),
+		("Mov_Reg_PI8", @"vm.Registers[vm.Memory[m]] = vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);"),
 		("Mov_Reg_PReg", @"
 		    I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] = vm.Registers[r1];
-            return m + 1;"),
-		("Mov_PI8_I8", @"vm.Memory[vm.Memory[m]] = vm.Memory[m + 1]; return m + 2;"),
-		("Mov_PI8_Reg", @"vm.Memory[vm.Memory[m]] = (byte)vm.Registers[vm.Memory[m + 1]]; return m + 2;"),
-		("Mov_PI8_PI8", @"vm.Memory[vm.Memory[m]] = vm.Memory[vm.Memory[m + 1]]; return m + 2;"),
-		("Mov_PI8_PReg", @"vm.Memory[vm.Memory[m]] = vm.Memory[vm.Registers[vm.Memory[m + 1]]]; return m + 2;"),
-		("Mov_PReg_I8", @"vm.Memory[vm.Registers[vm.Memory[m]]] = vm.Memory[m + 1]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("Mov_PI8_I8", @"vm.Memory[vm.Memory[m]] = vm.Memory[m + 1]; return (ushort)(m + 2);"),
+		("Mov_PI8_Reg", @"vm.Memory[vm.Memory[m]] = (byte)vm.Registers[vm.Memory[m + 1]]; return (ushort)(m + 2);"),
+		("Mov_PI8_PI8", @"vm.Memory[vm.Memory[m]] = vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);"),
+		("Mov_PI8_PReg", @"vm.Memory[vm.Memory[m]] = vm.Memory[vm.Registers[vm.Memory[m + 1]]]; return (ushort)(m + 2);"),
+		("Mov_PReg_I8", @"vm.Memory[vm.Registers[vm.Memory[m]]] = vm.Memory[m + 1]; return (ushort)(m + 2);"),
 		("Mov_PReg_Reg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Memory[vm.Registers[r0]] = (byte)vm.Registers[r1];
-            return m + 1;"),
-		("Mov_PReg_PI8", @"vm.Memory[vm.Registers[vm.Memory[m]]] = vm.Memory[vm.Memory[m + 1]]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("Mov_PReg_PI8", @"vm.Memory[vm.Registers[vm.Memory[m]]] = vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);"),
 		("Mov_PReg_PReg", @"
 			I8ToI4I4(vm.Memory[m], out var r0, out var r1);
 			vm.Memory[vm.Registers[r0]] = vm.Memory[vm.Registers[r1]];
-			return m + 1;"),
-		("AddI_Reg_I8", @"vm.Registers[vm.Memory[m]] += vm.Memory[m + 1]; return m + 2;"),
+			return (ushort)(m + 1);"),
+		("AddI_Reg_I8", @"vm.Registers[vm.Memory[m]] += vm.Memory[m + 1]; return (ushort)(m + 2);"),
 		("AddI_Reg_Reg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] += vm.Registers[r1];
-            return m + 1;"),
-		("AddI_Reg_PI8", @"vm.Registers[vm.Memory[m]] += vm.Memory[vm.Memory[m + 1]]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("AddI_Reg_PI8", @"vm.Registers[vm.Memory[m]] += vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);"),
 		("AddI_Reg_PReg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] += vm.Memory[vm.Registers[r1]];
-            return m + 1;"),
-		("SubI_Reg_I8", @"vm.Registers[vm.Memory[m]] -= vm.Memory[m + 1]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("SubI_Reg_I8", @"vm.Registers[vm.Memory[m]] -= vm.Memory[m + 1]; return (ushort)(m + 2);"),
 		("SubI_Reg_Reg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] -= vm.Registers[r1];
-            return m + 1;"),
-		("SubI_Reg_PI8", @"vm.Registers[vm.Memory[m]] -= vm.Memory[vm.Memory[m + 1]]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("SubI_Reg_PI8", @"vm.Registers[vm.Memory[m]] -= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);"),
 		("SubI_Reg_PReg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] -= vm.Memory[vm.Registers[r1]];
-            return m + 1;"),
-		("MulI_Reg_I8", @"vm.Registers[vm.Memory[m]] *= vm.Memory[m + 1]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("MulI_Reg_I8", @"vm.Registers[vm.Memory[m]] *= vm.Memory[m + 1]; return (ushort)(m + 2);"),
 		("MulI_Reg_Reg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] *= vm.Registers[r1];
-            return m + 1;"),
-		("MulI_Reg_PI8", @"vm.Registers[vm.Memory[m]] *= vm.Memory[vm.Memory[m + 1]]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("MulI_Reg_PI8", @"vm.Registers[vm.Memory[m]] *= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);"),
 		("MulI_Reg_PReg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] *= vm.Memory[vm.Registers[r1]];
-            return m + 1;"),
-		("Int_I8", @"return m + 1;"),
-		("DivI_Reg_I8", @"vm.Registers[vm.Memory[m]] /= vm.Memory[m + 1]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("Int_I8", @"return (ushort)(m + 1);"),
+		("DivI_Reg_I8", @"vm.Registers[vm.Memory[m]] /= vm.Memory[m + 1]; return (ushort)(m + 2);"),
 		("DivI_Reg_Reg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] /= vm.Registers[r1];
-            return m + 1;"),
-		("DivI_Reg_PI8", @"vm.Registers[vm.Memory[m]] /= vm.Memory[vm.Memory[m + 1]]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("DivI_Reg_PI8", @"vm.Registers[vm.Memory[m]] /= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);"),
 		("DivI_Reg_PReg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] /= vm.Memory[vm.Registers[r1]];
-            return m + 1;"),
-		("ModI_Reg_I8", @"vm.Registers[vm.Memory[m]] %= vm.Memory[m + 1]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("ModI_Reg_I8", @"vm.Registers[vm.Memory[m]] %= vm.Memory[m + 1]; return (ushort)(m + 2);"),
 		("ModI_Reg_Reg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] %= vm.Registers[r1];
-            return m + 1;"),
-		("ModI_Reg_PI8", @"vm.Registers[vm.Memory[m]] %= vm.Memory[vm.Memory[m + 1]]; return m + 2;"),
+            return (ushort)(m + 1);"),
+		("ModI_Reg_PI8", @"vm.Registers[vm.Memory[m]] %= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);"),
 		("ModI_Reg_PReg", @"
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] %= vm.Memory[vm.Registers[r1]];
-            return m + 1;"),
+            return (ushort)(m + 1);"),
 	};
 #>
 
@@ -92,6 +92,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
 
 namespace Pengu.VirtualMachine
 {
@@ -105,8 +106,8 @@ namespace Pengu.VirtualMachine
 	[System.CodeDom.Compiler.GeneratedCode("Instructions.tt", null)]
 	internal static class InstructionSet
 	{
-		public static readonly Dictionary<Instruction, Func<VM, int, int>> InstructionDefinitions =
-			new Dictionary<Instruction, Func<VM, int, int>>()
+		public static readonly Dictionary<Instruction, Func<VM, ushort, ushort>> InstructionDefinitions =
+			new Dictionary<Instruction, Func<VM, ushort, ushort>>()
 		{
 			<# foreach(var (name, code) in instructions) { #>
 				[Instruction.<#= name #>] = (vm, m) =>
@@ -202,7 +203,7 @@ namespace Pengu.VirtualMachine
 
         public static void Assemble(string s, VM vm)
         {
-			int memidx = 0;
+			ushort memidx = 0;
 			int i0, i1;
 
             var reader = new StringReader(s);
@@ -259,7 +260,7 @@ namespace Pengu.VirtualMachine
                 if (tokens.Count == 1 && IsAtAddress(tokens[0], out i0))
                 {
                     // @addr
-                    memidx = i0;
+                    memidx = (ushort)i0;
                     continue;
                 }
 
@@ -272,7 +273,7 @@ namespace Pengu.VirtualMachine
 
 				if(tokens.Count == 1 && tokens[0].Equals("ORG", StringComparison.OrdinalIgnoreCase))
 				{
-					vm.StartInstructionPointer = vm.InstructionPointer = memidx;
+                    MemoryMarshal.Write(vm.Memory.AsSpan(^2..), ref memidx);
 					continue;
 				}
 

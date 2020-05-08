@@ -10,10 +10,16 @@ namespace Pengu
     {
         static void Main(string[] _)
         {
-            using var renderer = new VulkanContext(true);
+
+#if DEBUG 
+            const bool debug = true;
+#else
+            const bool debug = false;
+#endif
+            using var renderer = new VulkanContext(debug);
             renderer.Run();
 
-            var vm = new VM(1, 20);
+            var vm = new VM(registers: 1, memory: 20);
 
             InstructionSet.Assemble(@"
 @1

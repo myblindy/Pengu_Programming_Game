@@ -31,6 +31,10 @@ namespace Pengu.Renderer
 					string.Join('\n', Enumerable.Range(0, linesCount).Select(lineIdx =>
 						$"{lineIdx * editorBytes:X4} | {string.Join(' ', Enumerable.Range(0, editorBytes).Select(idx => $"{mem++:X2}"))}"));
 			}
+
+			internal void UpdateLogic()
+			{
+			}
 		}
 	}
 }

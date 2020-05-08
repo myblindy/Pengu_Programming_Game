@@ -13,13 +13,13 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using System.Runtime.InteropServices;
 using SixLabors.ImageSharp.PixelFormats;
+using System.Numerics;
+using System.Collections.Specialized;
 using static MoreLinq.Extensions.ForEachExtension;
 
 using Image = SharpVk.Image;
 using Buffer = SharpVk.Buffer;
 using Version = SharpVk.Version;
-using System.Numerics;
-using System.Collections.Specialized;
 
 namespace Pengu.Renderer
 {
@@ -31,9 +31,6 @@ namespace Pengu.Renderer
         DebugReportCallback debugReportCallback;
         Surface surface;
         PhysicalDevice physicalDevice;
-        PhysicalDeviceMemoryProperties physicalDevideMemoryProperties;
-        PhysicalDeviceFeatures physicalDeviceFeatures;
-        PhysicalDeviceProperties physicalDeviceProperties;
         Device device;
         Queue graphicsQueue, presentQueue, transferQueue;
         QueueFamilyIndices queueIndices;
@@ -159,10 +156,6 @@ namespace Pengu.Renderer
                     .Any(extension => extension.ExtensionName == KhrExtensions.Swapchain) && w.q.IsComplete)
                 .First();
             var indices = queueIndices.Indices.ToArray();
-
-            physicalDevideMemoryProperties = physicalDevice.GetMemoryProperties();
-            physicalDeviceFeatures = physicalDevice.GetFeatures();
-            physicalDeviceProperties = physicalDevice.GetProperties();
 
             // create the logical device
             device = physicalDevice.CreateDevice(
@@ -424,6 +417,11 @@ namespace Pengu.Renderer
             }
         }
 
+        private void UpdateLogic()
+        {
+            gameSurface.UpdateLogic();
+        }
+
         int currentFrame = 0;
         private void DrawFrame()
         {
@@ -492,6 +490,7 @@ namespace Pengu.Renderer
                     nextFpsMeasurement = now + fpsMeasurementInterval;
                 }
 
+                UpdateLogic();
                 DrawFrame();
 
                 Glfw3.PollEvents();

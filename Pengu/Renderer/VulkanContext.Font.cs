@@ -9,12 +9,15 @@ using System.IO;
 using System.Net;
 using Pengu.Support;
 using System.Runtime.CompilerServices;
+using GLFW;
+
+using Image = SharpVk.Image;
 
 namespace Pengu.Renderer
 {
     partial class VulkanContext
     {
-        class Font : IDisposable
+        class Font : IRenderableModule, IDisposable
         {
             const int InitialCharacterSize = 2000;
 
@@ -116,14 +119,14 @@ namespace Pengu.Renderer
                         new PipelineShaderStageCreateInfo { Stage = ShaderStageFlags.Vertex, Module = vShader, Name = "main" },
                         new PipelineShaderStageCreateInfo { Stage = ShaderStageFlags.Fragment, Module = fShader, Name = "main" },
                     },
-                    new PipelineVertexInputStateCreateInfo
+                    new PipelineRasterizationStateCreateInfo { LineWidth = 1 },
+                    pipelineLayout, context.renderPass, 0, null, -1,
+                    vertexInputState: new PipelineVertexInputStateCreateInfo
                     {
                         VertexAttributeDescriptions = FontVertex.AttributeDescriptions,
                         VertexBindingDescriptions = new[] { FontVertex.BindingDescription },
                     },
-                    new PipelineInputAssemblyStateCreateInfo { Topology = PrimitiveTopology.TriangleList },
-                    new PipelineRasterizationStateCreateInfo { LineWidth = 1 },
-                    pipelineLayout, context.renderPass, 0, null, -1,
+                    inputAssemblyState: new PipelineInputAssemblyStateCreateInfo { Topology = PrimitiveTopology.TriangleList },
                     viewportState: new PipelineViewportStateCreateInfo
                     {
                         Viewports = new[] { new Viewport(0, 0, context.extent.Width, context.extent.Height, 0, 1) },
@@ -147,7 +150,7 @@ namespace Pengu.Renderer
                     });
             }
 
-            public void UpdateBuffer()
+            public void PreRender()
             {
                 if (IsBufferDataDirty)
                 {
@@ -167,7 +170,10 @@ namespace Pengu.Renderer
                                 {
                                     var x = fs.Position.X;
                                     var y = fs.Position.Y;
+                                    int charIndex = 0;
+
                                     foreach (var ch in fs.Value)
+                                    {
                                         if (ch == '\n')
                                         {
                                             x = fs.Position.X;
@@ -178,17 +184,21 @@ namespace Pengu.Renderer
                                         else
                                         {
                                             var (u0, v0, u1, v1) = Characters[ch];
+                                            var selected = fs.SelectedCharacters is null ? false : Array.BinarySearch(fs.SelectedCharacters, charIndex) >= 0;
 
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0));
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1));
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0));
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0), selected);
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0), selected);
 
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0));
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1));
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y + fs.Size, u1, v1));
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0), selected);
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
+                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y + fs.Size, u1, v1), selected);
 
                                             x += fs.Size;
                                         }
+
+                                        ++charIndex;
+                                    }
                                 }
 
                             stagingVertexBufferMemory.Unmap();
@@ -203,7 +213,7 @@ namespace Pengu.Renderer
             public void Draw(CommandBuffer commandBuffer, int idx)
             {
                 commandBuffer.BindPipeline(PipelineBindPoint.Graphics, pipeline);
-                commandBuffer.BindVertexBuffers(0, vertexBuffer, (DeviceSize)0);
+                commandBuffer.BindVertexBuffers(0, vertexBuffer, 0);
                 commandBuffer.BindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout, 0, descriptorSets[idx], null);
                 commandBuffer.Draw(UsedVertices, 1, 0, 0);
             }
@@ -216,6 +226,10 @@ namespace Pengu.Renderer
             }
 
             public void FreeString(FontString fs) => fontStrings.Remove(fs);
+
+            public void UpdateLogic() { }
+
+            public bool ProcessKey(Keys key, int scanCode, InputState state, ModifierKeys modifiers) => throw new NotImplementedException();
 
             #region IDisposable Support
             private bool disposedValue = false; // To detect redundant calls
@@ -281,6 +295,20 @@ namespace Pengu.Renderer
                 }
             }
 
+            int[] selectedCharacters;
+            public int[] SelectedCharacters
+            {
+                get => selectedCharacters;
+                set
+                {
+                    if ((!(selectedCharacters is null) && !(value is null) && !selectedCharacters.SequenceEqual(value)) || (selectedCharacters is null && !(value is null)) || (!(selectedCharacters is null) && value is null))
+                    {
+                        selectedCharacters = value;
+                        font.IsBufferDataDirty = true;
+                    }
+                }
+            }
+
             public int Length { get; private set; }
 
             Vector2 position;
@@ -293,8 +321,13 @@ namespace Pengu.Renderer
         struct FontVertex
         {
             public Vector4 posUv;
+            public float selected;
 
-            public FontVertex(Vector4 posUv) => this.posUv = posUv;
+            public FontVertex(Vector4 posUv, bool selected = false)
+            {
+                this.posUv = posUv;
+                this.selected = selected ? 1 : 0;
+            }
 
             public static readonly uint Size = (uint)Marshal.SizeOf<FontVertex>();
 
@@ -315,7 +348,14 @@ namespace Pengu.Renderer
                         Location = 0,
                         Format = Format.R32G32B32A32SFloat,
                         Offset = (uint)Marshal.OffsetOf<FontVertex>(nameof(posUv)),
-                    }
+                    },
+                    new VertexInputAttributeDescription
+                    {
+                        Binding = 0,
+                        Location = 1,
+                        Format = Format.R32SFloat,
+                        Offset = (uint)Marshal.OffsetOf<FontVertex>(nameof(selected)),
+                    },
                 };
         }
     }

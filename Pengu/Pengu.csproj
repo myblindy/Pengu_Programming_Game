@@ -48,8 +48,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="morelinq" Version="3.3.2" />
-    <PackageReference Include="SharpVk" Version="0.4.3-dev2" />
-    <PackageReference Include="SharpVk.Glfw" Version="0.4.3-dev2" />
+    <PackageReference Include="SharpVk" Version="1.0.0-dev496" />
     <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-rc0001" />
   </ItemGroup>
 
@@ -83,6 +82,12 @@
 
   <ItemGroup>
     <Folder Include="Media\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="GLFW.NET">
+      <HintPath>deps\GLFW.NET.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">

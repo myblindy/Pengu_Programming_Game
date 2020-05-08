@@ -1,5 +1,5 @@
 ﻿using SharpVk;
-using SharpVk.Glfw;
+using GLFW;
 using SharpVk.Khronos;
 using SharpVk.Multivendor;
 using System;
@@ -20,12 +20,14 @@ using static MoreLinq.Extensions.ForEachExtension;
 using Image = SharpVk.Image;
 using Buffer = SharpVk.Buffer;
 using Version = SharpVk.Version;
+using Constants = SharpVk.Constants;
+using Exception = System.Exception;
 
 namespace Pengu.Renderer
 {
     public partial class VulkanContext : IDisposable
     {
-        WindowHandle window;
+        NativeWindow window;
         Extent2D extent;
         Instance instance;
         DebugReportCallback debugReportCallback;
@@ -51,6 +53,12 @@ namespace Pengu.Renderer
 
         Semaphore[] imageAvailableSemaphores, renderingFinishedSemaphores;
         Fence[] inflightFences, imagesInFlight;
+
+        readonly Queue<(Keys key, int scanCode, InputState state, ModifierKeys modifiers)> KeyQueue =
+            new Queue<(Keys key, int scanCode, InputState state, ModifierKeys modifiers)>();
+
+        // needed for Glfw's events
+        static VulkanContext ContextInstance;
 
         private struct QueueFamilyIndices
         {
@@ -99,15 +107,21 @@ namespace Pengu.Renderer
             }
         }
 
+
         public VulkanContext(bool debug)
         {
-            Glfw3.Init();
+            ContextInstance = this;
 
             const int Width = 1280;
             const int Height = 720;
 
-            Glfw3.WindowHint((WindowAttribute)0x00022001, 0);
-            window = Glfw3.CreateWindow(Width, Height, "Pengu", MonitorHandle.Zero, WindowHandle.Zero);
+            Glfw.WindowHint(Hint.ClientApi, ClientApi.None);
+            Glfw.Init();
+
+            window = new NativeWindow(Width, Height, "Pengu");
+
+            static void KeyActionCallback(object sender, KeyEventArgs args) => ContextInstance.KeyQueue.Enqueue((args.Key, args.ScanCode, args.State, args.Modifiers));
+            window.KeyAction += KeyActionCallback;
 
             const string StandardValidationLayerName = "VK_LAYER_LUNARG_standard_validation";
 
@@ -120,12 +134,12 @@ namespace Pengu.Renderer
                 if (availableLayers.Any(w => w.LayerName == StandardValidationLayerName))
                     enabledLayers = new[] { StandardValidationLayerName };
 
-                enabledExtensions = Glfw3.GetRequiredInstanceExtensions().Append(ExtExtensions.DebugReport).ToArray();
+                enabledExtensions = Vulkan.GetRequiredInstanceExtensions().Append(ExtExtensions.DebugReport).ToArray();
             }
             else
             {
                 enabledLayers = Array.Empty<string>();
-                enabledExtensions = Glfw3.GetRequiredInstanceExtensions();
+                enabledExtensions = Vulkan.GetRequiredInstanceExtensions();
             }
 
             instance = Instance.Create(enabledLayers, enabledExtensions,
@@ -148,7 +162,8 @@ namespace Pengu.Renderer
                     }, DebugReportFlags.Error | DebugReportFlags.Warning | DebugReportFlags.PerformanceWarning);
 
             // create the surface surface
-            surface = instance.CreateGlfw3Surface(window);
+            _ = Vulkan.CreateWindowSurface(new IntPtr((long)instance.RawHandle.ToUInt64()), window.Handle, IntPtr.Zero, out var surfacePtr);
+            surface = Surface.CreateFromHandle(instance, (ulong)surfacePtr.ToInt64());
 
             (physicalDevice, queueIndices) = instance.EnumeratePhysicalDevices()
                 .Select(device => (device, q: QueueFamilyIndices.Find(device, surface)))
@@ -388,7 +403,7 @@ namespace Pengu.Renderer
                     throw new InvalidOperationException($"Could not get pixel span for {fn}");
 
                 stagingBuffer = CreateBuffer((ulong)size, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingBufferMemory);
-                var mappedData = stagingBufferMemory.Map(0, size);
+                var mappedData = stagingBufferMemory.Map(0, (ulong)size);
                 unsafe { pixelSpan.CopyTo(new Span<Bgra32>(mappedData.ToPointer(), size / 4)); }
                 stagingBufferMemory.Unmap();
 
@@ -419,7 +434,14 @@ namespace Pengu.Renderer
 
         private void UpdateLogic()
         {
+            while (KeyQueue.Count > 0)
+            {
+                var (key, scanCode, action, modifiers) = KeyQueue.Dequeue();
+                gameSurface.ProcessKey(key, scanCode, action, modifiers);
+            }
+
             gameSurface.UpdateLogic();
+            monospaceFont.UpdateLogic();
         }
 
         int currentFrame = 0;
@@ -442,7 +464,8 @@ namespace Pengu.Renderer
                 monospaceFont.IsCommandBufferDirty = false;
             }
 
-            monospaceFont.UpdateBuffer();
+            gameSurface.PreRender();
+            monospaceFont.PreRender();
 
             if (swapChainImageCommandBuffersDirty[(int)nextImage])
             {
@@ -478,7 +501,7 @@ namespace Pengu.Renderer
 
         internal void Run()
         {
-            while (!Glfw3.WindowShouldClose(window))
+            while (!window.IsClosing)
             {
                 var now = DateTime.Now;
 
@@ -493,7 +516,7 @@ namespace Pengu.Renderer
                 UpdateLogic();
                 DrawFrame();
 
-                Glfw3.PollEvents();
+                Glfw.PollEvents();
             }
         }
 
@@ -522,6 +545,7 @@ namespace Pengu.Renderer
                 surface.Dispose();
                 debugReportCallback.Dispose();
                 instance.Dispose();
+                window.Dispose();
 
                 disposedValue = true;
             }
@@ -538,5 +562,12 @@ namespace Pengu.Renderer
             GC.SuppressFinalize(this);
         }
         #endregion
+    }
+
+    public interface IRenderableModule
+    {
+        public bool ProcessKey(Keys key, int scanCode, InputState state, ModifierKeys modifiers);
+        public void UpdateLogic();
+        public void PreRender();
     }
 }

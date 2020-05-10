@@ -478,9 +478,15 @@ namespace Pengu.VirtualMachine
 
 		public static string Disassemble(Memory<byte> m, out int size)
 		{
-			var (result, sz) = InstructionDecompilation[(Instruction)m.Span[0]](m.Slice(1));
-			size = sz;
-			return result;
+            if (InstructionDecompilation.TryGetValue((Instruction)m.Span[0], out var fn))
+            {
+                var (result, sz) = fn(m.Slice(1));
+                size = sz;
+                return result;
+            }
+
+            size = 0;
+            return null;
 		}
 
         public static void Assemble(string s, VM vm)

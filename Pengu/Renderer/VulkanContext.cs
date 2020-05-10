@@ -22,6 +22,7 @@ using Buffer = SharpVk.Buffer;
 using Version = SharpVk.Version;
 using Constants = SharpVk.Constants;
 using Exception = System.Exception;
+using Pengu.VirtualMachine;
 
 namespace Pengu.Renderer
 {
@@ -276,7 +277,7 @@ namespace Pengu.Renderer
             monospaceFont = new Font(this, "pt_mono");
             fontStringFps = monospaceFont.AllocateString(new Vector2(-1f * extent.AspectRatio, -.995f), .033f);
 
-            gameSurface = new GameSurface(this);
+            gameSurface = new GameSurface(this, new VM(1, 20));
         }
 
         ShaderModule CreateShaderModule(string filePath)

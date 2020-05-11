@@ -176,13 +176,13 @@ namespace Pengu.VirtualMachine
 						}
 						else if(split[idx] == "I8")
 						{
-							result += $"{{s[{idx - 1}]}} ";
+							result += $"0x{{s[{idx - 1}]:X2}} ";
 							size += 1;
 							@params += 1;
 						}
 						else if(split[idx] == "PI8")
 						{
-							result += $"[{{s[{idx - 1}]}}] ";
+							result += $"[0x{{s[{idx - 1}]:X2}}] ";
 							size += 1;
 							@params += 1;
 						}

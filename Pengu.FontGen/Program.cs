@@ -31,6 +31,7 @@ namespace Pengu.FontGen
             chars.AddRange(Range('A', 'Z'));
             chars.AddRange(Range('0', '9'));
             chars.AddRange(" `~!@#$%^&*()_+-=[]\\{}|;':\",./<>?");
+            chars.AddRange("─│┌┐└┘├┤┬┴┼═║╒╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡╢╣╤╥╦╧╨╩╪╫╬");
 
             Dictionary<char, Size> charSizes;
 
@@ -43,7 +44,7 @@ namespace Pengu.FontGen
                     .ToDictionary(w => w.ch, w => w.size);
 
             var area = charSizes.Values.Sum(s => s.Width * s.Height);
-            var texWidth = (int)(Math.Sqrt(area) * 1.1);
+            var texWidth = (int)(Math.Sqrt(area) * 1.07);
 
             var fn = args[0].Replace(' ', '_');
             using var binoutput = new BinaryWriter(File.OpenWrite($"{fn}.bin"));
@@ -63,7 +64,7 @@ namespace Pengu.FontGen
                         y += size.Height;
                     }
 
-                    TextRenderer.DrawText(g, ch.ToString(), font, new Point(x, y), Color.White, TextFormatFlags.NoPrefix);
+                    TextRenderer.DrawText(g, ch.ToString(), font, new Point(x - 15, y), Color.White, TextFormatFlags.NoPrefix);
                     binoutput.Write(ch);
                     binoutput.Write((float)x / texWidth); binoutput.Write((float)y / texWidth);
 

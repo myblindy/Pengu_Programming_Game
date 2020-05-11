@@ -248,7 +248,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV r{s[0] & 0xF} {s[1]} ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MOV r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.Mov_Reg_Reg] = m =>
 				{
@@ -262,7 +262,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV r{s[0] & 0xF} [{s[1]}] ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MOV r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.Mov_Reg_PReg] = m =>
 				{
@@ -276,35 +276,35 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [{s[0]}] {s[1]} ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MOV [0x{s[0]:X2}] 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PI8_Reg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [{s[0]}] r{s[1] & 0xF} ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MOV [0x{s[0]:X2}] r{s[1] & 0xF} ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PI8_PI8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [{s[0]}] [{s[1]}] ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MOV [0x{s[0]:X2}] [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PI8_PReg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [{s[0]}] [r{s[1] & 0xF}] ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MOV [0x{s[0]:X2}] [r{s[1] & 0xF}] ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PReg_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [r{s[0] & 0xF}] {s[1]} ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MOV [r{s[0] & 0xF}] 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PReg_Reg] = m =>
 				{
@@ -318,7 +318,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [r{s[0] & 0xF}] [{s[1]}] ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MOV [r{s[0] & 0xF}] [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PReg_PReg] = m =>
 				{
@@ -332,7 +332,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"ADDI r{s[0] & 0xF} {s[1]} ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"ADDI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.AddI_Reg_Reg] = m =>
 				{
@@ -346,7 +346,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"ADDI r{s[0] & 0xF} [{s[1]}] ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"ADDI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.AddI_Reg_PReg] = m =>
 				{
@@ -360,7 +360,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"SUBI r{s[0] & 0xF} {s[1]} ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"SUBI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.SubI_Reg_Reg] = m =>
 				{
@@ -374,7 +374,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"SUBI r{s[0] & 0xF} [{s[1]}] ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"SUBI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.SubI_Reg_PReg] = m =>
 				{
@@ -388,7 +388,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MULI r{s[0] & 0xF} {s[1]} ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MULI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.MulI_Reg_Reg] = m =>
 				{
@@ -402,7 +402,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MULI r{s[0] & 0xF} [{s[1]}] ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MULI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.MulI_Reg_PReg] = m =>
 				{
@@ -416,14 +416,14 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 2 ? ($"INT {s[0]} ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"INT 0x{s[0]:X2} ", 2) : (null, 0);
 				},
 							[Instruction.DivI_Reg_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"DIVI r{s[0] & 0xF} {s[1]} ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"DIVI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.DivI_Reg_Reg] = m =>
 				{
@@ -437,7 +437,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"DIVI r{s[0] & 0xF} [{s[1]}] ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"DIVI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.DivI_Reg_PReg] = m =>
 				{
@@ -451,7 +451,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MODI r{s[0] & 0xF} {s[1]} ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MODI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.ModI_Reg_Reg] = m =>
 				{
@@ -465,7 +465,7 @@ namespace Pengu.VirtualMachine
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MODI r{s[0] & 0xF} [{s[1]}] ", 3) : (null, 0);
+					return s.Length >= 3 ? ($"MODI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.ModI_Reg_PReg] = m =>
 				{

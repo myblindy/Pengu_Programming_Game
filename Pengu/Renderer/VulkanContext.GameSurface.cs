@@ -18,7 +18,7 @@ namespace Pengu.Renderer
 
             const int editorLineBytes = 0x10;
             const int addressSizeBytes = 2;
-            const int linesCount = 30;
+            const int linesCount = 26;
 
             int selectedHalfByte;
             bool dirty = false;
@@ -37,21 +37,27 @@ namespace Pengu.Renderer
             {
                 static string TryGetHexAt(byte[] array, int index) => index < array.Length ? array[index].ToString("X2") : "..";
 
-                var header = new string(' ', addressSizeBytes * 2) + " | " + string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => $"{idx:X2}"));
+                var frameForAddress = new string('═', addressSizeBytes * 2 + 2);
+                var frameForHexDump = new string('═', editorLineBytes * 3 + 1);
+
                 hexEditorFontString.Value =
-                    header + "\n" +
-                    new string('-', header.Length) + "\n" +
+                    "╔" + frameForAddress + "╤" + frameForHexDump + "╗\n" +
+                    "║" + new string(' ', addressSizeBytes * 2 + 2) + "│ " + string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => $"{idx:X2}")) + " ║\n" +
+                    "╟" + new string('─', addressSizeBytes * 2 + 2) + "┼" + new string('─', editorLineBytes * 3 + 1) + "╢\n" +
                     string.Join('\n', Enumerable.Range(0, linesCount).Select(lineIdx =>
-                        $"{lineIdx * editorLineBytes:X4} | {string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => TryGetHexAt(vm.Memory, lineIdx * editorLineBytes + idx)))}")) + "\n\n" +
-                    InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _);
+                        $"║ {lineIdx * editorLineBytes:X4} │ {string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => TryGetHexAt(vm.Memory, lineIdx * editorLineBytes + idx)))} ║")) + "\n" +
+                    "╚" + frameForAddress + "╧" + frameForHexDump + "╝\n" +
+
+                    "\n ASM: " + InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _);
             }
 
             void SelectByteInFontString()
             {
                 var line = Math.DivRem(selectedHalfByte, editorLineBytes * 2, out var halfIndexInLine);
 
-                var headerAddress0 = 7 + 3 * (halfIndexInLine / 2);
-                var leftAddress0 = (2 + line) * (7 + 3 * editorLineBytes);
+                var frameLength = addressSizeBytes * 2 + 4 + editorLineBytes * 3 + 3;
+                var headerAddress0 = frameLength + 2 + 7 + 3 * (halfIndexInLine / 2);
+                var leftAddress0 = (3 + line) * frameLength + 2;
                 var value0 = leftAddress0 + 4 + 3 + 3 * (halfIndexInLine / 2) + halfIndexInLine % 2;
 
                 hexEditorFontString.SelectedCharacters = new[]

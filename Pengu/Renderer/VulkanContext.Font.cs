@@ -52,7 +52,7 @@ namespace Pengu.Renderer
                     var length = binfile.BaseStream.Length;
                     do
                     {
-                        const float offset1 = 0.020f, offset2u = 0.019f, offset2v = 0.00f;
+                        const float offset1 = 0.00f, offset2u = 0, offset2v = 0.00f;
                         Characters.Add(binfile.ReadChar(), (binfile.ReadSingle() + offset1, binfile.ReadSingle() + offset1, binfile.ReadSingle() + offset2u, binfile.ReadSingle() + offset2v));
                     } while (binfile.BaseStream.Position < length);
                 }
@@ -180,21 +180,27 @@ namespace Pengu.Renderer
                                             y += fs.Size;
                                         }
                                         else if (ch == ' ')
-                                            x += fs.Size;
+                                        {
+                                            var (u0, v0, u1, v1) = Characters[' '];
+                                            x += fs.Size * (u1 - u0) / (v1 - v0);
+                                        }
                                         else
                                         {
                                             var (u0, v0, u1, v1) = Characters[ch];
+                                            var aspect = (u1 - u0) / (v1 - v0);
+                                            var xSize = fs.Size * aspect;
+
                                             var selected = fs.SelectedCharacters is null ? false : Array.BinarySearch(fs.SelectedCharacters, charIndex) >= 0;
 
                                             *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0), selected);
                                             *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
-                                            *vertexPtr++ = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0), selected);
+                                            *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), selected);
 
-                                            *vertexPtr++ = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0), selected);
+                                            *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), selected);
                                             *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
-                                            *vertexPtr++ = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y + fs.Size, u1, v1), selected);
+                                            *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y + fs.Size, u1, v1), selected);
 
-                                            x += fs.Size;
+                                            x += xSize;
                                         }
 
                                         ++charIndex;

@@ -16,7 +16,7 @@ namespace Pengu.Renderer
             readonly FontString hexEditorFontString;
             readonly VM vm;
 
-            const int editorLineBytes = 0x10;
+            const int editorLineBytes = 0x20;
             const int addressSizeBytes = 2;
             const int linesCount = 26;
 
@@ -48,7 +48,7 @@ namespace Pengu.Renderer
                         $"║ {lineIdx * editorLineBytes:X4} │ {string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => TryGetHexAt(vm.Memory, lineIdx * editorLineBytes + idx)))} ║")) + "\n" +
                     "╚" + frameForAddress + "╧" + frameForHexDump + "╝\n" +
 
-                    "\n ASM: " + InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _);
+                    "\n ASM: " + (InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---");
             }
 
             void SelectByteInFontString()
@@ -68,11 +68,11 @@ namespace Pengu.Renderer
                 };
             }
 
-            public void UpdateLogic()
+            public void UpdateLogic(TimeSpan elapsedTime)
             {
             }
 
-            public void PreRender()
+            public void PreRender(uint nextImage)
             {
                 if (dirty)
                 {
@@ -84,6 +84,14 @@ namespace Pengu.Renderer
 
             public bool ProcessKey(Keys key, int scanCode, InputState state, ModifierKeys modifiers)
             {
+                if (key == Keys.Right && state != InputState.Release && modifiers.HasFlag(ModifierKeys.Control))
+                {
+                    InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out var size);
+                    selectedHalfByte = Math.Min(size * 2 + selectedHalfByte & 0xFFFE, vm.Memory.Length * 2 - 2);
+                    dirty = true;
+                    return true;
+                }
+
                 if (key == Keys.Left && state != InputState.Release && selectedHalfByte > 0) { --selectedHalfByte; dirty = true; return true; }
                 if (key == Keys.Right && state != InputState.Release && selectedHalfByte < vm.Memory.Length * 2 - 1) { ++selectedHalfByte; dirty = true; return true; }
 

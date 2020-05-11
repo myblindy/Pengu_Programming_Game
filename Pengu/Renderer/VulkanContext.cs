@@ -109,7 +109,7 @@ namespace Pengu.Renderer
         }
 
 
-        public VulkanContext(bool debug)
+        public VulkanContext(VM vm, bool debug)
         {
             ContextInstance = this;
 
@@ -277,7 +277,7 @@ namespace Pengu.Renderer
             monospaceFont = new Font(this, "pt_mono");
             fontStringFps = monospaceFont.AllocateString(new Vector2(-1f * extent.AspectRatio, -.995f), .033f);
 
-            gameSurface = new GameSurface(this, new VM(1, 20));
+            gameSurface = new GameSurface(this, vm);
         }
 
         ShaderModule CreateShaderModule(string filePath)
@@ -433,7 +433,7 @@ namespace Pengu.Renderer
             }
         }
 
-        private void UpdateLogic()
+        private void UpdateLogic(TimeSpan elapsedTime)
         {
             while (KeyQueue.Count > 0)
             {
@@ -441,8 +441,8 @@ namespace Pengu.Renderer
                 gameSurface.ProcessKey(key, scanCode, action, modifiers);
             }
 
-            gameSurface.UpdateLogic();
-            monospaceFont.UpdateLogic();
+            gameSurface.UpdateLogic(elapsedTime);
+            monospaceFont.UpdateLogic(elapsedTime);
         }
 
         int currentFrame = 0;
@@ -465,8 +465,8 @@ namespace Pengu.Renderer
                 monospaceFont.IsCommandBufferDirty = false;
             }
 
-            gameSurface.PreRender();
-            monospaceFont.PreRender();
+            gameSurface.PreRender(nextImage);
+            monospaceFont.PreRender(nextImage);
 
             if (swapChainImageCommandBuffersDirty[(int)nextImage])
             {
@@ -502,6 +502,8 @@ namespace Pengu.Renderer
 
         internal void Run()
         {
+            DateTime lastUpdateAt = DateTime.Now;
+
             while (!window.IsClosing)
             {
                 var now = DateTime.Now;
@@ -514,10 +516,12 @@ namespace Pengu.Renderer
                     nextFpsMeasurement = now + fpsMeasurementInterval;
                 }
 
-                UpdateLogic();
+                UpdateLogic(now - lastUpdateAt);
                 DrawFrame();
 
                 Glfw.PollEvents();
+
+                lastUpdateAt = now;
             }
         }
 
@@ -568,7 +572,7 @@ namespace Pengu.Renderer
     public interface IRenderableModule
     {
         public bool ProcessKey(Keys key, int scanCode, InputState state, ModifierKeys modifiers);
-        public void UpdateLogic();
-        public void PreRender();
+        public void UpdateLogic(TimeSpan elapsedTime);
+        public void PreRender(uint nextImage);
     }
 }

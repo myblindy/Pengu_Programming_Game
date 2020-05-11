@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Pengu.VirtualMachine
 {
-    class VM
+    public class VM
     {
         public readonly int[] Registers;
         public readonly byte[] Memory;

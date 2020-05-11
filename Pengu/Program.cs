@@ -10,14 +10,11 @@ namespace Pengu
     {
         static void Main(string[] _)
         {
-
 #if DEBUG 
             const bool debug = true;
 #else
             const bool debug = false;
 #endif
-            using var renderer = new VulkanContext(debug);
-            renderer.Run();
 
             var vm = new VM(registers: 1, memory: 20);
 
@@ -31,21 +28,23 @@ mov r0 [1]
 muli r0 r0
 addi r0 [2]
 subi r0 6
-mov [0] r0
-end", vm);
+mov [0] r0", vm);
 
-            vm.Reset();
-            vm.RunNextInstruction(int.MaxValue);
+            using var renderer = new VulkanContext(vm, debug);
+            renderer.Run();
 
-            Debug.WriteLine($"R: {vm.Registers[0]:X4} MEM: {string.Join(" ", vm.Memory.Select(m => m.ToString("X2")))}");
+            //vm.Reset();
+            //vm.RunNextInstruction(int.MaxValue);
 
-            for (var m = vm.Memory.AsMemory(vm.StartInstructionPointer..); m.Length > 0;)
-            {
-                var line = InstructionSet.Disassemble(m, out var size);
-                if (line is null) break;
-                Debug.WriteLine(line);
-                m = m.Slice(size);
-            }
+            //Debug.WriteLine($"R: {vm.Registers[0]:X4} MEM: {string.Join(" ", vm.Memory.Select(m => m.ToString("X2")))}");
+
+            //for (var m = vm.Memory.AsMemory(vm.StartInstructionPointer..); m.Length > 0;)
+            //{
+            //    var line = InstructionSet.Disassemble(m, out var size);
+            //    if (line is null) break;
+            //    Debug.WriteLine(line);
+            //    m = m.Slice(size);
+            //}
         }
     }
 }

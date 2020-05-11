@@ -3,7 +3,7 @@
 | ORG                 |      -      | -                     |
 | @addr               |      -      | -                     |
 | DB I8               |      -      | i8                     |
-| END                 |      1      | 00                    |
+| NOP                 |      1      | 00                    |
 | MOV REG, I8         |      1      | 01 reg i8             |
 | MOV REG, REG        |      1      | 02 reg:4\|reg:4       |
 | MOV REG, [I8]       |      1      | 03 reg i8             |

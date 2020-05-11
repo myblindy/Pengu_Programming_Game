@@ -12,6 +12,8 @@ using System.Runtime.CompilerServices;
 using GLFW;
 
 using Image = SharpVk.Image;
+using Buffer = SharpVk.Buffer;
+using MoreLinq;
 
 namespace Pengu.Renderer
 {
@@ -19,13 +21,17 @@ namespace Pengu.Renderer
     {
         class Font : IRenderableModule, IDisposable
         {
-            const int InitialCharacterSize = 2000;
-
             readonly VulkanContext context;
             private readonly Dictionary<char, (float u0, float v0, float u1, float v1)> Characters = new Dictionary<char, (float u0, float v0, float u1, float v1)>();
 
-            SharpVk.Buffer vertexBuffer, stagingVertexBuffer;
-            DeviceMemory vertexBufferMemory, stagingVertexBufferMemory;
+            private TimeSpan totalElapsedTime;
+
+            Buffer vertexBuffer, stagingVertexBuffer, indexBuffer, stagingIndexBuffer;
+            DeviceMemory vertexBufferMemory, stagingVertexBufferMemory, indexBufferMemory, stagingIndexBufferMemory;
+
+            Buffer[] uniformBuffers;
+            DeviceMemory[] uniformBufferMemories;
+
             PipelineLayout pipelineLayout;
             DescriptorSetLayout descriptorSetLayout;
             DescriptorSet[] descriptorSets;
@@ -35,8 +41,13 @@ namespace Pengu.Renderer
             ImageView fontTextureImageView;
             Sampler fontTextureSampler;
 
-            public uint MaxVertices { get; private set; } = InitialCharacterSize * 6;
-            public uint UsedVertices { get; private set; }
+            public uint MaxCharacters { get; private set; } = 2000;
+            public uint MaxVertices => MaxCharacters * 4;
+            public uint MaxIndices => MaxCharacters * 6;
+
+            public uint UsedCharacters { get; private set; }
+            public uint UsedVertices => UsedCharacters * 4;
+            public uint UsedIndices => UsedCharacters * 6;
 
             readonly List<FontString> fontStrings = new List<FontString>();
 
@@ -57,12 +68,13 @@ namespace Pengu.Renderer
                     } while (binfile.BaseStream.Position < length);
                 }
 
-                var size = (ulong)(FontVertex.Size * MaxVertices);
+                CreateVertexIndexBuffers();
 
-                stagingVertexBuffer = context.CreateBuffer(size, BufferUsageFlags.TransferSource,
-                    MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingVertexBufferMemory);
-
-                vertexBuffer = context.CreateBuffer(size, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer, MemoryPropertyFlags.DeviceLocal, out vertexBufferMemory);
+                uniformBuffers = new Buffer[context.swapChainImages.Length];
+                uniformBufferMemories = new DeviceMemory[context.swapChainImages.Length];
+                for (int idx = 0; idx < context.swapChainImages.Length; ++idx)
+                    uniformBuffers[idx] = context.CreateBuffer(FontUniformObject.Size, BufferUsageFlags.UniformBuffer,
+                        MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out uniformBufferMemories[idx]);
 
                 // build the font texture objects
                 fontTextureImage = context.CreateTextureImage("pt_mono.png", context.queueIndices.TransferFamily.Value, out var format, out fontTextureImageMemory);
@@ -75,38 +87,78 @@ namespace Pengu.Renderer
                 using var vShader = context.CreateShaderModule("font.vert.spv");
                 using var fShader = context.CreateShaderModule("font.frag.spv");
 
-                var descriptorPool = context.device.CreateDescriptorPool((uint)context.swapChainImages.Length, new DescriptorPoolSize
-                {
-                    Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)context.swapChainImages.Length
-                });
+                var descriptorPool = context.device.CreateDescriptorPool((uint)context.swapChainImages.Length,
+                    new[]
+                    {
+                        new DescriptorPoolSize
+                        {
+                            Type = DescriptorType.UniformBuffer,
+                            DescriptorCount = (uint)context.swapChainImages.Length,
+                        },
+                        new DescriptorPoolSize
+                        {
+                            Type = DescriptorType.CombinedImageSampler,
+                            DescriptorCount = (uint)context.swapChainImages.Length
+                        }
+                    });
 
-                descriptorSetLayout = context.device.CreateDescriptorSetLayout(new DescriptorSetLayoutBinding
-                {
-                    Binding = 1,
-                    DescriptorCount = 1,
-                    DescriptorType = DescriptorType.CombinedImageSampler,
-                    StageFlags = ShaderStageFlags.Fragment,
-                });
+                descriptorSetLayout = context.device.CreateDescriptorSetLayout(
+                    new[]
+                    {
+                        new DescriptorSetLayoutBinding
+                        {
+                            Binding = 0,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.UniformBuffer,
+                            StageFlags = ShaderStageFlags.Vertex,
+                        },
+                        new DescriptorSetLayoutBinding
+                        {
+                            Binding = 1,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.CombinedImageSampler,
+                            StageFlags = ShaderStageFlags.Fragment,
+                        }
+                    });
 
                 descriptorSets = context.device.AllocateDescriptorSets(descriptorPool, Enumerable.Repeat(descriptorSetLayout, context.swapChainImages.Length).ToArray());
 
                 for (int idx = 0; idx < context.swapChainImages.Length; ++idx)
                     context.device.UpdateDescriptorSets(
-                        new WriteDescriptorSet
+                        new[]
                         {
-                            DestinationSet = descriptorSets[idx],
-                            DestinationBinding = 1,
-                            DestinationArrayElement = 0,
-                            DescriptorType = DescriptorType.CombinedImageSampler,
-                            DescriptorCount = 1,
-                            ImageInfo = new[]
+                            new WriteDescriptorSet
                             {
-                                new DescriptorImageInfo
+                                DestinationSet = descriptorSets[idx],
+                                DestinationBinding = 0,
+                                DestinationArrayElement = 0,
+                                DescriptorType = DescriptorType.UniformBuffer,
+                                DescriptorCount = 1,
+                                BufferInfo = new[]
                                 {
-                                    ImageLayout= ImageLayout.ShaderReadOnlyOptimal,
-                                    ImageView = fontTextureImageView,
-                                    Sampler = fontTextureSampler,
+                                    new DescriptorBufferInfo
+                                    {
+                                        Buffer = uniformBuffers[idx],
+                                        Offset = 0,
+                                        Range = FontUniformObject.Size
+                                    }
+                                },
+                            },
+                            new WriteDescriptorSet
+                            {
+                                DestinationSet = descriptorSets[idx],
+                                DestinationBinding = 1,
+                                DestinationArrayElement = 0,
+                                DescriptorType = DescriptorType.CombinedImageSampler,
+                                DescriptorCount = 1,
+                                ImageInfo = new[]
+                                {
+                                    new DescriptorImageInfo
+                                    {
+                                        ImageLayout= ImageLayout.ShaderReadOnlyOptimal,
+                                        ImageView = fontTextureImageView,
+                                        Sampler = fontTextureSampler,
+                                    }
                                 }
                             }
                         }, null);
@@ -150,78 +202,131 @@ namespace Pengu.Renderer
                     });
             }
 
-            public void PreRender()
+            private void CreateVertexIndexBuffers()
+            {
+                var vertexSize = (ulong)(FontVertex.Size * MaxVertices);
+                var indexSize = (ulong)(sizeof(ushort) * MaxIndices);
+
+                DisposeVertexIndexBuffers();
+
+                stagingVertexBuffer = context.CreateBuffer(vertexSize, BufferUsageFlags.TransferSource,
+                    MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingVertexBufferMemory);
+
+                vertexBuffer = context.CreateBuffer(vertexSize, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer,
+                    MemoryPropertyFlags.DeviceLocal, out vertexBufferMemory);
+
+                stagingIndexBuffer = context.CreateBuffer(indexSize, BufferUsageFlags.TransferSource,
+                    MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingIndexBufferMemory);
+
+                indexBuffer = context.CreateBuffer(indexSize, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer,
+                    MemoryPropertyFlags.DeviceLocal, out indexBufferMemory);
+            }
+
+            private void DisposeVertexIndexBuffers()
+            {
+                vertexBuffer?.Dispose();
+                vertexBufferMemory?.Free();
+                indexBuffer?.Dispose();
+                indexBufferMemory?.Free();
+                stagingVertexBuffer?.Dispose();
+                stagingVertexBufferMemory?.Free();
+                stagingIndexBuffer?.Dispose();
+                stagingIndexBufferMemory?.Free();
+            }
+
+            public void PreRender(uint nextImage)
             {
                 if (IsBufferDataDirty)
                 {
-                    var charCount = fontStrings.Sum(fs => fs.Length);
-                    UsedVertices = (uint)(charCount * 6);
+                    UsedCharacters = (uint)fontStrings.Sum(fs => fs.Value?.Count(s => s != ' ' && s != '\n') ?? 0);
+
                     if (MaxVertices < UsedVertices)
-                        throw new NotImplementedException();
-                    else
-                        unsafe
-                        {
-                            var memoryBuffer = stagingVertexBufferMemory.Map(0, UsedVertices * FontVertex.Size);
+                    {
+                        MaxCharacters = (uint)(UsedCharacters * Math.Max(1.5, (double)UsedVertices / MaxVertices * 1.5));
+                        CreateVertexIndexBuffers();
+                    }
 
-                            // build the string vertices
-                            FontVertex* vertexPtr = (FontVertex*)memoryBuffer.ToPointer();
-                            foreach (var fs in fontStrings)
-                                if (!string.IsNullOrWhiteSpace(fs.Value))
+                    unsafe
+                    {
+                        // build the string vertices
+                        var vertexPtr = (FontVertex*)stagingVertexBufferMemory.Map(0, UsedVertices * FontVertex.Size);
+                        ushort vertexIdx = 0;
+                        var indexPtr = (ushort*)stagingIndexBufferMemory.Map(0, UsedIndices * sizeof(ushort));
+
+                        foreach (var fs in fontStrings)
+                            if (!string.IsNullOrWhiteSpace(fs.Value))
+                            {
+                                var x = fs.Position.X;
+                                var y = fs.Position.Y;
+                                int charIndex = 0;
+
+                                foreach (var ch in fs.Value)
                                 {
-                                    var x = fs.Position.X;
-                                    var y = fs.Position.Y;
-                                    int charIndex = 0;
-
-                                    foreach (var ch in fs.Value)
+                                    if (ch == '\n')
                                     {
-                                        if (ch == '\n')
-                                        {
-                                            x = fs.Position.X;
-                                            y += fs.Size;
-                                        }
-                                        else if (ch == ' ')
-                                        {
-                                            var (u0, v0, u1, v1) = Characters[' '];
-                                            x += fs.Size * (u1 - u0) / (v1 - v0);
-                                        }
-                                        else
-                                        {
-                                            var (u0, v0, u1, v1) = Characters[ch];
-                                            var aspect = (u1 - u0) / (v1 - v0);
-                                            var xSize = fs.Size * aspect;
-
-                                            var selected = fs.SelectedCharacters is null ? false : Array.BinarySearch(fs.SelectedCharacters, charIndex) >= 0;
-
-                                            *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0), selected);
-                                            *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
-                                            *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), selected);
-
-                                            *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), selected);
-                                            *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
-                                            *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y + fs.Size, u1, v1), selected);
-
-                                            x += xSize;
-                                        }
-
-                                        ++charIndex;
+                                        x = fs.Position.X;
+                                        y += fs.Size;
                                     }
+                                    else if (ch == ' ')
+                                    {
+                                        var (u0, v0, u1, v1) = Characters[' '];
+                                        x += fs.Size * (u1 - u0) / (v1 - v0);
+                                    }
+                                    else
+                                    {
+                                        var (u0, v0, u1, v1) = Characters[ch];
+                                        var aspect = (u1 - u0) / (v1 - v0);
+                                        var xSize = fs.Size * aspect;
+
+                                        var selected = fs.SelectedCharacters is null ? false : Array.BinarySearch(fs.SelectedCharacters, charIndex) >= 0;
+
+                                        *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0), selected);
+                                        *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
+                                        *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), selected);
+                                        *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y + fs.Size, u1, v1), selected);
+
+                                        *indexPtr++ = (ushort)(vertexIdx + 0);
+                                        *indexPtr++ = (ushort)(vertexIdx + 1);
+                                        *indexPtr++ = (ushort)(vertexIdx + 2);
+
+                                        *indexPtr++ = (ushort)(vertexIdx + 2);
+                                        *indexPtr++ = (ushort)(vertexIdx + 1);
+                                        *indexPtr++ = (ushort)(vertexIdx + 3);
+
+                                        vertexIdx += 4;
+
+                                        x += xSize;
+                                    }
+
+                                    ++charIndex;
                                 }
+                            }
+                    }
+                    stagingIndexBufferMemory.Unmap();
+                    stagingVertexBufferMemory.Unmap();
 
-                            stagingVertexBufferMemory.Unmap();
-
-                            context.CopyBuffer(stagingVertexBuffer, vertexBuffer, UsedVertices * FontVertex.Size);
-                        }
+                    context.CopyBuffer(stagingVertexBuffer, vertexBuffer, UsedVertices * FontVertex.Size);
+                    context.CopyBuffer(stagingIndexBuffer, indexBuffer, UsedIndices * sizeof(ushort));
 
                     IsBufferDataDirty = false;
                 }
+
+                // update the UBO with the time
+                unsafe
+                {
+                    var memPtr = (FontUniformObject*)uniformBufferMemories[nextImage].Map(0, FontUniformObject.Size);
+                    *memPtr = new FontUniformObject { time = (float)totalElapsedTime.TotalMilliseconds };
+                }
+                uniformBufferMemories[nextImage].Unmap();
             }
 
             public void Draw(CommandBuffer commandBuffer, int idx)
             {
                 commandBuffer.BindPipeline(PipelineBindPoint.Graphics, pipeline);
                 commandBuffer.BindVertexBuffers(0, vertexBuffer, 0);
+                commandBuffer.BindIndexBuffer(indexBuffer, 0, IndexType.Uint16);
                 commandBuffer.BindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout, 0, descriptorSets[idx], null);
-                commandBuffer.Draw(UsedVertices, 1, 0, 0);
+                commandBuffer.DrawIndexed(UsedIndices, 1, 0, 0, 0);
             }
 
             public FontString AllocateString(Vector2 pos, float size)
@@ -233,7 +338,7 @@ namespace Pengu.Renderer
 
             public void FreeString(FontString fs) => fontStrings.Remove(fs);
 
-            public void UpdateLogic() { }
+            public void UpdateLogic(TimeSpan elapsedTime) => totalElapsedTime += elapsedTime;
 
             public bool ProcessKey(Keys key, int scanCode, InputState state, ModifierKeys modifiers) => throw new NotImplementedException();
 
@@ -255,10 +360,9 @@ namespace Pengu.Renderer
                     fontTextureImage.Dispose();
                     fontTextureImageMemory.Free();
                     pipeline.Dispose();
-                    vertexBuffer.Dispose();
-                    vertexBufferMemory.Free();
-                    stagingVertexBuffer.Dispose();
-                    stagingVertexBufferMemory.Free();
+                    uniformBuffers.ForEach(w => w.Dispose());
+                    uniformBufferMemories.ForEach(w => w.Free());
+                    DisposeVertexIndexBuffers();
 
                     disposedValue = true;
                 }
@@ -322,6 +426,13 @@ namespace Pengu.Renderer
 
             float size;
             public float Size { get => size; set { size = value; font.IsBufferDataDirty = true; font.IsCommandBufferDirty = true; } }
+        }
+
+        struct FontUniformObject
+        {
+            public float time;
+
+            public static readonly uint Size = (uint)Marshal.SizeOf<FontUniformObject>();
         }
 
         struct FontVertex

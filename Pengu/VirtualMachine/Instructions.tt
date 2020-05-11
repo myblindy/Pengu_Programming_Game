@@ -8,7 +8,7 @@
 <#
 	(string name, string instruction)[] instructions = new[]
 	{
-		("End", @"return ushort.MaxValue;"),
+		("Nop", @"return m;"),
 		("Mov_Reg_I8", @"vm.Registers[vm.Memory[m]] = vm.Memory[m + 1]; return (ushort)(m + 2);"),
 		("Mov_Reg_Reg", @"
 			I8ToI4I4(vm.Memory[m], out var r0, out var r1);
@@ -189,14 +189,14 @@ namespace Pengu.VirtualMachine
 					}
 					#>
 
-					return s.Length >= <#= params #> ? ($"<#= result #>", <#= size #>) : (null, 0);
+					return s.Length >= <#= @params - 1 #> ? ($"<#= result #>", <#= size #>) : (null, 0);
 				},
 			<# } #>
 		};
 
 		public static string Disassemble(Memory<byte> m, out int size)
 		{
-            if (InstructionDecompilation.TryGetValue((Instruction)m.Span[0], out var fn))
+            if (m.Length > 0 && InstructionDecompilation.TryGetValue((Instruction)m.Span[0], out var fn))
             {
                 var (result, sz) = fn(m.Slice(1));
                 size = sz;

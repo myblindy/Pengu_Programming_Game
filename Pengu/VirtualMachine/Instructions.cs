@@ -11,7 +11,7 @@ namespace Pengu.VirtualMachine
 {
 	internal enum Instruction
 	{
-					End, 
+					Nop, 
 					Mov_Reg_I8, 
 					Mov_Reg_Reg, 
 					Mov_Reg_PI8, 
@@ -53,9 +53,9 @@ namespace Pengu.VirtualMachine
 		public static readonly Dictionary<Instruction, Func<VM, ushort, ushort>> InstructionDefinitions =
 			new Dictionary<Instruction, Func<VM, ushort, ushort>>()
 		{
-							[Instruction.End] = (vm, m) =>
+							[Instruction.Nop] = (vm, m) =>
 				{
-					return ushort.MaxValue;
+					return m;
 				},
 							[Instruction.Mov_Reg_I8] = (vm, m) =>
 				{
@@ -236,249 +236,249 @@ namespace Pengu.VirtualMachine
 		static readonly Dictionary<Instruction, Func<Memory<byte>, (string result, int size)>> InstructionDecompilation = 
 			new Dictionary<Instruction, Func<Memory<byte>, (string result, int size)>>()
 		{
-							[Instruction.End] = m =>
+							[Instruction.Nop] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 1 ? ($"END ", 1) : (null, 0);
+					return s.Length >= 0 ? ($"NOP ", 1) : (null, 0);
 				},
 							[Instruction.Mov_Reg_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.Mov_Reg_Reg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
 				},
 							[Instruction.Mov_Reg_PI8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.Mov_Reg_PReg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
 				},
 							[Instruction.Mov_PI8_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [0x{s[0]:X2}] 0x{s[1]:X2} ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PI8_Reg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [0x{s[0]:X2}] r{s[1] & 0xF} ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] r{s[1] & 0xF} ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PI8_PI8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [0x{s[0]:X2}] [0x{s[1]:X2}] ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PI8_PReg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [0x{s[0]:X2}] [r{s[1] & 0xF}] ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] [r{s[1] & 0xF}] ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PReg_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [r{s[0] & 0xF}] 0x{s[1]:X2} ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PReg_Reg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [r{s[0] & 0xF}] r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
 				},
 							[Instruction.Mov_PReg_PI8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [r{s[0] & 0xF}] [0x{s[1]:X2}] ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.Mov_PReg_PReg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MOV [r{s[0] & 0xF}] [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
 				},
 							[Instruction.AddI_Reg_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"ADDI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.AddI_Reg_Reg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"ADDI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
 				},
 							[Instruction.AddI_Reg_PI8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"ADDI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.AddI_Reg_PReg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"ADDI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
 				},
 							[Instruction.SubI_Reg_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"SUBI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.SubI_Reg_Reg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"SUBI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
 				},
 							[Instruction.SubI_Reg_PI8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"SUBI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.SubI_Reg_PReg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"SUBI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
 				},
 							[Instruction.MulI_Reg_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MULI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.MulI_Reg_Reg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MULI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
 				},
 							[Instruction.MulI_Reg_PI8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MULI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.MulI_Reg_PReg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MULI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
 				},
 							[Instruction.Int_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 2 ? ($"INT 0x{s[0]:X2} ", 2) : (null, 0);
+					return s.Length >= 1 ? ($"INT 0x{s[0]:X2} ", 2) : (null, 0);
 				},
 							[Instruction.DivI_Reg_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"DIVI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.DivI_Reg_Reg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"DIVI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
 				},
 							[Instruction.DivI_Reg_PI8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"DIVI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.DivI_Reg_PReg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"DIVI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
 				},
 							[Instruction.ModI_Reg_I8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MODI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
 				},
 							[Instruction.ModI_Reg_Reg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MODI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
 				},
 							[Instruction.ModI_Reg_PI8] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MODI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
+					return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
 				},
 							[Instruction.ModI_Reg_PReg] = m =>
 				{
 					ReadOnlySpan<byte> s = m.Span;
 
 					
-					return s.Length >= 3 ? ($"MODI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
+					return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
 				},
 					};
 
 		public static string Disassemble(Memory<byte> m, out int size)
 		{
-            if (InstructionDecompilation.TryGetValue((Instruction)m.Span[0], out var fn))
+            if (m.Length > 0 && InstructionDecompilation.TryGetValue((Instruction)m.Span[0], out var fn))
             {
                 var (result, sz) = fn(m.Slice(1));
                 size = sz;
@@ -565,12 +565,12 @@ namespace Pengu.VirtualMachine
 					continue;
 				}
 
-									if(tokens[0].Equals("End", StringComparison.OrdinalIgnoreCase))
+									if(tokens[0].Equals("Nop", StringComparison.OrdinalIgnoreCase))
 					{
 												if(tokens.Count == 1
 							)
 						{
-							vm.Memory[memidx++] = (byte)Instruction.End;
+							vm.Memory[memidx++] = (byte)Instruction.Nop;
 														continue;
 						}
 											}

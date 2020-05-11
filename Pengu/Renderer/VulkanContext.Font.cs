@@ -186,13 +186,13 @@ namespace Pengu.Renderer
                                             var (u0, v0, u1, v1) = Characters[ch];
                                             var selected = fs.SelectedCharacters is null ? false : Array.BinarySearch(fs.SelectedCharacters, charIndex) >= 0;
 
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0), selected);
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0), selected);
+                                            *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0), selected);
+                                            *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
+                                            *vertexPtr++ = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0), selected);
 
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0), selected);
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
-                                            Unsafe.AsRef<FontVertex>(vertexPtr++) = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y + fs.Size, u1, v1), selected);
+                                            *vertexPtr++ = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y, u1, v0), selected);
+                                            *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
+                                            *vertexPtr++ = new FontVertex(new Vector4((x + fs.Size) / context.extent.AspectRatio, y + fs.Size, u1, v1), selected);
 
                                             x += fs.Size;
                                         }

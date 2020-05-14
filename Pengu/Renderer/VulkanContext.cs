@@ -496,7 +496,7 @@ namespace Pengu.Renderer
             currentFrame = (currentFrame + 1) % swapChainImages.Length;
         }
 
-        static readonly TimeSpan fpsMeasurementInterval = TimeSpan.FromSeconds(2);
+        static readonly TimeSpan fpsMeasurementInterval = TimeSpan.FromSeconds(1);
         DateTime nextFpsMeasurement = DateTime.Now + fpsMeasurementInterval;
         int framesRendered;
 
@@ -511,7 +511,9 @@ namespace Pengu.Renderer
                 ++framesRendered;
                 if (now >= nextFpsMeasurement)
                 {
-                    fontStringFps.Value = $"FPS: {framesRendered / (now - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds:0.00} Font Verts: {monospaceFont.UsedVertices} used out of {monospaceFont.MaxVertices}";
+                    fontStringFps.Set($"FPS: {framesRendered / (now - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds:0.00} Font Verts: {monospaceFont.UsedVertices} used out of {monospaceFont.MaxVertices}",
+                        FontColor.Black, FontColor.White, null);
+
                     framesRendered = 0;
                     nextFpsMeasurement = now + fpsMeasurementInterval;
                 }

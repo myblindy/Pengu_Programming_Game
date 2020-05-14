@@ -30,7 +30,6 @@ namespace Pengu.Renderer
 
                 hexEditorFontString = context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -0.9f), 0.055f);
                 FillFontString();
-                SelectByteInFontString();
             }
 
             private void FillFontString()
@@ -40,32 +39,33 @@ namespace Pengu.Renderer
                 var frameForAddress = new string('═', addressSizeBytes * 2 + 2);
                 var frameForHexDump = new string('═', editorLineBytes * 3 + 1);
 
-                hexEditorFontString.Value =
-                    "╔" + frameForAddress + "╤" + frameForHexDump + "╗\n" +
-                    "║" + new string(' ', addressSizeBytes * 2 + 2) + "│ " + string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => $"{idx:X2}")) + " ║\n" +
-                    "╟" + new string('─', addressSizeBytes * 2 + 2) + "┼" + new string('─', editorLineBytes * 3 + 1) + "╢\n" +
-                    string.Join('\n', Enumerable.Range(0, linesCount).Select(lineIdx =>
-                        $"║ {lineIdx * editorLineBytes:X4} │ {string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => TryGetHexAt(vm.Memory, lineIdx * editorLineBytes + idx)))} ║")) + "\n" +
-                    "╚" + frameForAddress + "╧" + frameForHexDump + "╝\n" +
+                const int windowFrameWidth = 1 + addressSizeBytes * 2 + 2 + 1 + editorLineBytes * 3 + 1 + 1;
+                const string title = "HEX EDITOR";
+                int titleHalfOffset = (windowFrameWidth - title.Length) / 2;
 
-                    "\n ASM: " + (InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---");
-            }
-
-            void SelectByteInFontString()
-            {
                 var line = Math.DivRem(selectedHalfByte, editorLineBytes * 2, out var halfIndexInLine);
 
-                var frameLength = addressSizeBytes * 2 + 4 + editorLineBytes * 3 + 3;
+                const int frameLength = addressSizeBytes * 2 + 4 + editorLineBytes * 3 + 3;
                 var headerAddress0 = frameLength + 2 + 7 + 3 * (halfIndexInLine / 2);
                 var leftAddress0 = (3 + line) * frameLength + 2;
                 var value0 = leftAddress0 + 4 + 3 + 3 * (halfIndexInLine / 2) + halfIndexInLine % 2;
 
-                hexEditorFontString.SelectedCharacters = new[]
-                {
-                    headerAddress0, headerAddress0 + 1,
-                    leftAddress0, leftAddress0 + 1, leftAddress0 + 2, leftAddress0 + 3,
-                    value0
-                };
+                hexEditorFontString.Set(
+                    "╔" + frameForAddress + "╤" + new string('═', titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2) + " " + title + " " + new string('═', titleHalfOffset) + "╗\n" +
+                    "║" + new string(' ', addressSizeBytes * 2 + 2) + "│" + string.Concat(Enumerable.Range(0, editorLineBytes).Select(idx => $" {idx:X2}")) + " ║\n" +
+                    "╟" + new string('─', addressSizeBytes * 2 + 2) + "┼" + new string('─', editorLineBytes * 3 + 1) + "╢\n" +
+                    string.Concat(Enumerable.Range(0, linesCount).Select(lineIdx =>
+                        $"║ {lineIdx * editorLineBytes:X4} │ {string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => TryGetHexAt(vm.Memory, lineIdx * editorLineBytes + idx)))} ║\n")) +
+                    "╚" + frameForAddress + "╧" + new string('═', editorLineBytes * 3 + 1) + "╝\n" +
+                    "\n ASM: " + (InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---"),
+
+                    FontColor.Black, FontColor.BrightGreen, new[]
+                    {
+                        (1 + frameForAddress.Length + 1 + titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2, title.Length + 2, FontColor.White, FontColor.Black, false),
+                        (headerAddress0, 2, FontColor.Black, FontColor.BrightCyan, true),
+                        (leftAddress0, 4, FontColor.Black, FontColor.BrightCyan, true),
+                        (value0, 1, FontColor.Black, FontColor.BrightCyan, true),
+                    });
             }
 
             public void UpdateLogic(TimeSpan elapsedTime)
@@ -77,7 +77,6 @@ namespace Pengu.Renderer
                 if (dirty)
                 {
                     FillFontString();
-                    SelectByteInFontString();
                     dirty = false;
                 }
             }
@@ -87,6 +86,7 @@ namespace Pengu.Renderer
                 if (key == Keys.Right && state != InputState.Release && modifiers.HasFlag(ModifierKeys.Control))
                 {
                     InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out var size);
+                    if (size == 0) size = 1;
                     selectedHalfByte = Math.Min(size * 2 + selectedHalfByte & 0xFFFE, vm.Memory.Length * 2 - 2);
                     dirty = true;
                     return true;

@@ -14,6 +14,8 @@ using GLFW;
 using Image = SharpVk.Image;
 using Buffer = SharpVk.Buffer;
 using MoreLinq;
+using SixLabors.ImageSharp;
+using SharpVk.Interop.Khronos;
 
 namespace Pengu.Renderer
 {
@@ -278,12 +280,19 @@ namespace Pengu.Renderer
                                         var aspect = (u1 - u0) / (v1 - v0);
                                         var xSize = fs.Size * aspect;
 
-                                        var selected = fs.SelectedCharacters is null ? false : Array.BinarySearch(fs.SelectedCharacters, charIndex) >= 0;
+                                        var @override = fs.TryGetOverrideForIndex(charIndex);
 
-                                        *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0), selected);
-                                        *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), selected);
-                                        *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), selected);
-                                        *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y + fs.Size, u1, v1), selected);
+                                        var bg = FontColor.Black;
+                                        var fg = FontColor.BrightGreen;
+                                        var selected = false;
+
+                                        if (@override.HasValue)
+                                            (bg, fg, selected) = (@override.Value.bg, @override.Value.fg, @override.Value.selected);
+
+                                        *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0), bg, fg, selected);
+                                        *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), bg, fg, selected);
+                                        *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), bg, fg, selected);
+                                        *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y + fs.Size, u1, v1), bg, fg, selected);
 
                                         *indexPtr++ = (ushort)(vertexIdx + 0);
                                         *indexPtr++ = (ushort)(vertexIdx + 1);
@@ -392,32 +401,80 @@ namespace Pengu.Renderer
                 this.size = size;
             }
 
-            string value;
-            public string Value
+            public (FontColor bg, FontColor fg, bool selected)? TryGetOverrideForIndex(int needle)
             {
-                get => value;
-                set
+                if (Overrides is null) return null;
+
+                int min = 0, max = Overrides.Length, idx = (max - min) / 2;
+                while (true)
                 {
-                    font.IsCommandBufferDirty = (string.IsNullOrWhiteSpace(this.value) ? 0 : this.value.Length) != (string.IsNullOrWhiteSpace(value) ? 0 : value.Length);
-                    this.value = value;
-                    Length = value.Count(c => c != '\n' && c != ' ');
-                    font.IsBufferDataDirty = true;
+                    if (Overrides[idx].start <= needle && Overrides[idx].start + Overrides[idx].count > needle)
+                        return (Overrides[idx].bg, Overrides[idx].fg, Overrides[idx].selected);
+
+                    if (idx == max || idx == min) return null;
+
+                    if (Overrides[idx].start + Overrides[idx].count <= needle)
+                        min = idx;
+                    else
+                        max = idx; 
+                    idx = (max - min) / 2 + min;
                 }
             }
 
-            int[] selectedCharacters;
-            public int[] SelectedCharacters
+            public void Set(string value, FontColor defaultBg, FontColor defaultFg, (int start, int count, FontColor bg, FontColor fg, bool selected)[] overrides)
             {
-                get => selectedCharacters;
-                set
+                if (value == Value && defaultBg == DefaultBackground && defaultFg == DefaultForeground && ((overrides is null && Overrides is null) ||
+                    (!(overrides is null) && !(Overrides is null) && overrides.SequenceEqual(Overrides))))
                 {
-                    if ((!(selectedCharacters is null) && !(value is null) && !selectedCharacters.SequenceEqual(value)) || (selectedCharacters is null && !(value is null)) || (!(selectedCharacters is null) && value is null))
-                    {
-                        selectedCharacters = value;
-                        font.IsBufferDataDirty = true;
-                    }
+                    return;
                 }
+
+                font.IsCommandBufferDirty = (string.IsNullOrWhiteSpace(Value) ? 0 : Value.Length) != (string.IsNullOrWhiteSpace(value) ? 0 : value.Length);
+
+                Value = value;
+                DefaultBackground = defaultBg;
+                DefaultForeground = defaultFg;
+                Overrides = overrides;
+
+                Length = value.Count(c => c != '\n' && c != ' ');
+
+                font.IsBufferDataDirty = true;
             }
+
+            public string Value { get; private set; }
+
+            public FontColor DefaultBackground { get; private set; }
+
+            public FontColor DefaultForeground { get; private set; }
+
+            public (int start, int count, FontColor bg, FontColor fg, bool selected)[] Overrides { get; private set; }
+
+            //string value;
+            //public string Value
+            //{
+            //    get => value;
+            //    set
+            //    {
+            //        font.IsCommandBufferDirty = (string.IsNullOrWhiteSpace(this.value) ? 0 : this.value.Length) != (string.IsNullOrWhiteSpace(value) ? 0 : value.Length);
+            //        this.value = value;
+            //        Length = value.Count(c => c != '\n' && c != ' ');
+            //        font.IsBufferDataDirty = true;
+            //    }
+            //}
+
+            //int[] selectedCharacters;
+            //public int[] SelectedCharacters
+            //{
+            //    get => selectedCharacters;
+            //    set
+            //    {
+            //        if ((!(selectedCharacters is null) && !(value is null) && !selectedCharacters.SequenceEqual(value)) || (selectedCharacters is null && !(value is null)) || (!(selectedCharacters is null) && value is null))
+            //        {
+            //            selectedCharacters = value;
+            //            font.IsBufferDataDirty = true;
+            //        }
+            //    }
+            //}
 
             public int Length { get; private set; }
 
@@ -435,15 +492,35 @@ namespace Pengu.Renderer
             public static readonly uint Size = (uint)Marshal.SizeOf<FontUniformObject>();
         }
 
+        enum FontColor
+        {
+            Black,
+            DarkBlue,
+            DarkGreen,
+            DarkCyan,
+            DarkRed,
+            DarkMagenta,
+            DarkYellow,
+            DarkWhite,
+            BrightBlack,
+            BrightBlue,
+            BrightGreen,
+            BrightCyan,
+            BrightRed,
+            BrightMagenta,
+            BrightYellow,
+            White
+        }
+
         struct FontVertex
         {
             public Vector4 posUv;
-            public float selected;
+            public Vector3 bgFgSelected;
 
-            public FontVertex(Vector4 posUv, bool selected = false)
+            public FontVertex(Vector4 posUv, FontColor bg, FontColor fg, bool selected)
             {
                 this.posUv = posUv;
-                this.selected = selected ? 1 : 0;
+                bgFgSelected = new Vector3((int)bg, (int)fg, selected ? 1 : 0);
             }
 
             public static readonly uint Size = (uint)Marshal.SizeOf<FontVertex>();
@@ -470,8 +547,8 @@ namespace Pengu.Renderer
                     {
                         Binding = 0,
                         Location = 1,
-                        Format = Format.R32SFloat,
-                        Offset = (uint)Marshal.OffsetOf<FontVertex>(nameof(selected)),
+                        Format = Format.R32G32B32SFloat,
+                        Offset = (uint)Marshal.OffsetOf<FontVertex>(nameof(bgFgSelected)),
                     },
                 };
         }

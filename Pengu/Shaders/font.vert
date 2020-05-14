@@ -29,7 +29,7 @@ layout(binding = 0) uniform UniformBufferObject
 } ubo;
 
 layout(location = 0) in vec4 inPosUv;
-layout(location = 1) in vec3 bgFgSelected;
+layout(location = 1) in int bgFgSelected;
 
 layout(location = 0) out vec4 fragBackgroundColor;
 layout(location = 1) out vec4 fragColor;
@@ -39,10 +39,10 @@ void main()
 {
     gl_Position = vec4(inPosUv.xy, 0.0, 1.0);
 
-    fragBackgroundColor = colors[int(bgFgSelected[0])];
-    fragColor = colors[int(bgFgSelected[1])];
+    fragBackgroundColor = colors[bgFgSelected >> 16];
+    fragColor = colors[(bgFgSelected >> 8) & 0xFF];
 
-    if(bgFgSelected[2] > 0.5)
+    if((bgFgSelected & 0xFF) > 0)
         fragColor *= ((sin(ubo.time / 100.0) + 1.0) * 3.0 / 4.0 + 2.0 / 3.0);                       // normalize and move to the upper 1/3
 
     fragTexCoord = inPosUv.zw;                                                                      // for a smoother animation

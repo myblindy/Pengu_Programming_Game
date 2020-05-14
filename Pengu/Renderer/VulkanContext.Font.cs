@@ -449,33 +449,6 @@ namespace Pengu.Renderer
 
             public (int start, int count, FontColor bg, FontColor fg, bool selected)[] Overrides { get; private set; }
 
-            //string value;
-            //public string Value
-            //{
-            //    get => value;
-            //    set
-            //    {
-            //        font.IsCommandBufferDirty = (string.IsNullOrWhiteSpace(this.value) ? 0 : this.value.Length) != (string.IsNullOrWhiteSpace(value) ? 0 : value.Length);
-            //        this.value = value;
-            //        Length = value.Count(c => c != '\n' && c != ' ');
-            //        font.IsBufferDataDirty = true;
-            //    }
-            //}
-
-            //int[] selectedCharacters;
-            //public int[] SelectedCharacters
-            //{
-            //    get => selectedCharacters;
-            //    set
-            //    {
-            //        if ((!(selectedCharacters is null) && !(value is null) && !selectedCharacters.SequenceEqual(value)) || (selectedCharacters is null && !(value is null)) || (!(selectedCharacters is null) && value is null))
-            //        {
-            //            selectedCharacters = value;
-            //            font.IsBufferDataDirty = true;
-            //        }
-            //    }
-            //}
-
             public int Length { get; private set; }
 
             Vector2 position;
@@ -515,12 +488,12 @@ namespace Pengu.Renderer
         struct FontVertex
         {
             public Vector4 posUv;
-            public Vector3 bgFgSelected;
+            public int bgFgSelected;
 
             public FontVertex(Vector4 posUv, FontColor bg, FontColor fg, bool selected)
             {
                 this.posUv = posUv;
-                bgFgSelected = new Vector3((int)bg, (int)fg, selected ? 1 : 0);
+                bgFgSelected = ((int)bg << 16) | ((int)fg << 8) | (selected ? 1 : 0);
             }
 
             public static readonly uint Size = (uint)Marshal.SizeOf<FontVertex>();
@@ -547,7 +520,7 @@ namespace Pengu.Renderer
                     {
                         Binding = 0,
                         Location = 1,
-                        Format = Format.R32G32B32SFloat,
+                        Format = Format.R32UInt,
                         Offset = (uint)Marshal.OffsetOf<FontVertex>(nameof(bgFgSelected)),
                     },
                 };

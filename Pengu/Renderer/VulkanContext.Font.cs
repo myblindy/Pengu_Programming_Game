@@ -485,6 +485,7 @@ namespace Pengu.Renderer
             White
         }
 
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
         struct FontVertex
         {
             public Vector4 posUv;

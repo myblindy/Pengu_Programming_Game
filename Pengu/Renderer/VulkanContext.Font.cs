@@ -24,7 +24,8 @@ namespace Pengu.Renderer
         class Font : IRenderableModule, IDisposable
         {
             readonly VulkanContext context;
-            private readonly Dictionary<char, (float u0, float v0, float u1, float v1)> Characters = new Dictionary<char, (float u0, float v0, float u1, float v1)>();
+            private readonly Dictionary<char, (float u0, float v0, float u1, float v1)> Characters =
+                new Dictionary<char, (float u0, float v0, float u1, float v1)>();
 
             private TimeSpan totalElapsedTime;
 
@@ -289,10 +290,14 @@ namespace Pengu.Renderer
                                         if (@override.HasValue)
                                             (bg, fg, selected) = (@override.Value.bg, @override.Value.fg, @override.Value.selected);
 
-                                        *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, u0, v0), bg, fg, selected);
-                                        *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), bg, fg, selected);
-                                        *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), bg, fg, selected);
-                                        *vertexPtr++ = new FontVertex(new Vector4((x + xSize) / context.extent.AspectRatio, y + fs.Size, u1, v1), bg, fg, selected);
+                                        *vertexPtr++ = new FontVertex(
+                                            new Vector4(x / context.extent.AspectRatio, y, u0, v0), bg, fg, selected, fs.Offset);
+                                        *vertexPtr++ = new FontVertex(
+                                            new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), bg, fg, selected, fs.Offset);
+                                        *vertexPtr++ = new FontVertex(
+                                            new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), bg, fg, selected, fs.Offset);
+                                        *vertexPtr++ = new FontVertex(
+                                            new Vector4((x + xSize) / context.extent.AspectRatio, y + fs.Size, u1, v1), bg, fg, selected, fs.Offset);
 
                                         *indexPtr++ = (ushort)(vertexIdx + 0);
                                         *indexPtr++ = (ushort)(vertexIdx + 1);
@@ -320,7 +325,7 @@ namespace Pengu.Renderer
                     IsBufferDataDirty = false;
                 }
 
-                // update the UBO with the time
+                // update the UBO with the time and X/Y offset
                 unsafe
                 {
                     var memPtr = (FontUniformObject*)uniformBufferMemories[nextImage].Map(0, FontUniformObject.Size);
@@ -338,6 +343,8 @@ namespace Pengu.Renderer
                 commandBuffer.DrawIndexed(UsedIndices, 1, 0, 0, 0);
             }
 
+            public (float u0, float v0, float u1, float v1) this[char ch] => Characters[ch];
+
             public FontString AllocateString(Vector2 pos, float size)
             {
                 var fs = new FontString(this, pos, size);
@@ -349,7 +356,11 @@ namespace Pengu.Renderer
 
             public void UpdateLogic(TimeSpan elapsedTime) => totalElapsedTime += elapsedTime;
 
-            public bool ProcessKey(Keys key, int scanCode, InputState state, ModifierKeys modifiers) => throw new NotImplementedException();
+            public bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers) => throw new NotImplementedException();
+
+            public bool ProcessMouseMove(double x, double y) => throw new NotImplementedException();
+
+            public bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers) => throw new NotImplementedException();
 
             #region IDisposable Support
             private bool disposedValue = false; // To detect redundant calls
@@ -421,22 +432,26 @@ namespace Pengu.Renderer
                 }
             }
 
-            public void Set(string value, FontColor defaultBg, FontColor defaultFg, (int start, int count, FontColor bg, FontColor fg, bool selected)[] overrides)
+            public void Set(string value, FontColor? defaultBg, FontColor? defaultFg, Vector2? offset, (int start, int count, FontColor bg, FontColor fg, bool selected)[] overrides)
             {
-                if (value == Value && defaultBg == DefaultBackground && defaultFg == DefaultForeground && ((overrides is null && Overrides is null) ||
-                    (!(overrides is null) && !(Overrides is null) && overrides.SequenceEqual(Overrides))))
+                if ((value is null || value == Value) && (!defaultBg.HasValue || defaultBg == DefaultBackground) &&
+                    (!defaultFg.HasValue || defaultFg == DefaultForeground) && (!offset.HasValue || offset == Offset) &&
+                    (overrides is null || overrides.SequenceEqual(Overrides)))
                 {
                     return;
                 }
 
-                font.IsCommandBufferDirty = (string.IsNullOrWhiteSpace(Value) ? 0 : Value.Length) != (string.IsNullOrWhiteSpace(value) ? 0 : value.Length);
+                font.IsCommandBufferDirty = !(value is null) && (string.IsNullOrWhiteSpace(Value) ? 0 : Value.Length) != (string.IsNullOrWhiteSpace(value) ? 0 : value.Length);
 
-                Value = value;
-                DefaultBackground = defaultBg;
-                DefaultForeground = defaultFg;
-                Overrides = overrides;
-
-                Length = value.Count(c => c != '\n' && c != ' ');
+                if (!(value is null))
+                {
+                    Value = value;
+                    Length = value.Count(c => c != '\n' && c != ' ');
+                }
+                if (defaultBg.HasValue) DefaultBackground = defaultBg.Value;
+                if (defaultFg.HasValue) DefaultForeground = defaultFg.Value;
+                if (!(overrides is null)) Overrides = overrides;
+                if (offset.HasValue) Offset = offset.Value;
 
                 font.IsBufferDataDirty = true;
             }
@@ -448,6 +463,8 @@ namespace Pengu.Renderer
             public FontColor DefaultForeground { get; private set; }
 
             public (int start, int count, FontColor bg, FontColor fg, bool selected)[] Overrides { get; private set; }
+
+            public Vector2 Offset { get; private set; }
 
             public int Length { get; private set; }
 
@@ -490,11 +507,13 @@ namespace Pengu.Renderer
         {
             public Vector4 posUv;
             public int bgFgSelected;
+            public Vector2 offset;
 
-            public FontVertex(Vector4 posUv, FontColor bg, FontColor fg, bool selected)
+            public FontVertex(Vector4 posUv, FontColor bg, FontColor fg, bool selected, Vector2 offset)
             {
                 this.posUv = posUv;
                 bgFgSelected = ((int)bg << 16) | ((int)fg << 8) | (selected ? 1 : 0);
+                this.offset = offset;
             }
 
             public static readonly uint Size = (uint)Marshal.SizeOf<FontVertex>();
@@ -523,6 +542,13 @@ namespace Pengu.Renderer
                         Location = 1,
                         Format = Format.R32UInt,
                         Offset = (uint)Marshal.OffsetOf<FontVertex>(nameof(bgFgSelected)),
+                    },
+                    new VertexInputAttributeDescription
+                    {
+                        Binding = 0,
+                        Location = 2,
+                        Format = Format.R32G32SFloat,
+                        Offset = (uint)Marshal.OffsetOf<FontVertex>(nameof(offset)),
                     },
                 };
         }

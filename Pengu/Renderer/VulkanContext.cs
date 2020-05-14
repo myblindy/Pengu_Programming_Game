@@ -55,8 +55,29 @@ namespace Pengu.Renderer
         Semaphore[] imageAvailableSemaphores, renderingFinishedSemaphores;
         Fence[] inflightFences, imagesInFlight;
 
-        readonly Queue<(Keys key, int scanCode, InputState state, ModifierKeys modifiers)> KeyQueue =
-            new Queue<(Keys key, int scanCode, InputState state, ModifierKeys modifiers)>();
+        interface IInputAction { }
+
+        struct KeyAction : IInputAction
+        {
+            public Keys Key;
+            public int ScanCode;
+            public InputState Action;
+            public ModifierKeys Modifiers;
+        }
+
+        struct MouseMoveAction : IInputAction
+        {
+            public double X, Y;
+        }
+
+        struct MouseButtonAction : IInputAction
+        {
+            public InputState Action;
+            public MouseButton Button;
+            public ModifierKeys Modifiers;
+        }
+
+        readonly Queue<IInputAction> InputActionQueue = new Queue<IInputAction>();
 
         // needed for Glfw's events
         static VulkanContext ContextInstance;
@@ -108,7 +129,6 @@ namespace Pengu.Renderer
             }
         }
 
-
         public VulkanContext(VM vm, bool debug)
         {
             ContextInstance = this;
@@ -116,13 +136,22 @@ namespace Pengu.Renderer
             const int Width = 1280;
             const int Height = 720;
 
-            Glfw.WindowHint(Hint.ClientApi, ClientApi.None);
+            Glfw.WindowHint(Hint.ClientApi, ClientApi.None);        // Vulkan API
             Glfw.Init();
 
             window = new NativeWindow(Width, Height, "Pengu");
 
-            static void KeyActionCallback(object sender, KeyEventArgs args) => ContextInstance.KeyQueue.Enqueue((args.Key, args.ScanCode, args.State, args.Modifiers));
+            static void KeyActionCallback(object sender, KeyEventArgs args) => ContextInstance.InputActionQueue.Enqueue(
+                new KeyAction { Key = args.Key, ScanCode = args.ScanCode, Action = args.State, Modifiers = args.Modifiers });
             window.KeyAction += KeyActionCallback;
+
+            static void MouseMovedCallback(object sender, MouseMoveEventArgs args) => ContextInstance.InputActionQueue.Enqueue(
+                new MouseMoveAction { X = args.X / ContextInstance.extent.Width, Y = args.Y / ContextInstance.extent.Height });
+            window.MouseMoved += MouseMovedCallback;
+
+            static void MouseButtonCallback(object sender, MouseButtonEventArgs args) => ContextInstance.InputActionQueue.Enqueue(
+                new MouseButtonAction { Action = args.Action, Button = args.Button, Modifiers = args.Modifiers });
+            window.MouseButton += MouseButtonCallback;
 
             const string StandardValidationLayerName = "VK_LAYER_LUNARG_standard_validation";
 
@@ -435,10 +464,20 @@ namespace Pengu.Renderer
 
         private void UpdateLogic(TimeSpan elapsedTime)
         {
-            while (KeyQueue.Count > 0)
+            while (InputActionQueue.Count > 0)
             {
-                var (key, scanCode, action, modifiers) = KeyQueue.Dequeue();
-                gameSurface.ProcessKey(key, scanCode, action, modifiers);
+                switch (InputActionQueue.Dequeue())
+                {
+                    case KeyAction keyAction:
+                        gameSurface.ProcessKey(keyAction.Key, keyAction.ScanCode, keyAction.Action, keyAction.Modifiers);
+                        break;
+                    case MouseMoveAction mouseMoveAction:
+                        gameSurface.ProcessMouseMove(mouseMoveAction.X, mouseMoveAction.Y);
+                        break;
+                    case MouseButtonAction mouseButton:
+                        gameSurface.ProcessMouseButton(mouseButton.Button, mouseButton.Action, mouseButton.Modifiers);
+                        break;
+                }
             }
 
             gameSurface.UpdateLogic(elapsedTime);
@@ -512,7 +551,7 @@ namespace Pengu.Renderer
                 if (now >= nextFpsMeasurement)
                 {
                     fontStringFps.Set($"FPS: {framesRendered / (now - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds:0.00} Font Verts: {monospaceFont.UsedVertices} used out of {monospaceFont.MaxVertices}",
-                        FontColor.Black, FontColor.White, null);
+                        FontColor.Black, FontColor.White, null, null);
 
                     framesRendered = 0;
                     nextFpsMeasurement = now + fpsMeasurementInterval;
@@ -573,7 +612,9 @@ namespace Pengu.Renderer
 
     public interface IRenderableModule
     {
-        public bool ProcessKey(Keys key, int scanCode, InputState state, ModifierKeys modifiers);
+        public bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers);
+        public bool ProcessMouseMove(double x, double y);
+        public bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers);
         public void UpdateLogic(TimeSpan elapsedTime);
         public void PreRender(uint nextImage);
     }

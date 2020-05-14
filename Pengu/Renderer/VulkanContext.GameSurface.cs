@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Linq;
 using GLFW;
 using Pengu.VirtualMachine;
+using System.Diagnostics;
 
 namespace Pengu.Renderer
 {
@@ -16,17 +17,22 @@ namespace Pengu.Renderer
             readonly FontString hexEditorFontString;
             readonly VM vm;
 
-            const int editorLineBytes = 0x20;
+            const int editorLineBytes = 0x10;
             const int addressSizeBytes = 2;
-            const int linesCount = 26;
+            const int linesCount = 15;
 
             int selectedHalfByte;
             bool dirty = false;
+
+            Vector2 characterSize;
 
             public GameSurface(VulkanContext context, VM vm)
             {
                 this.context = context;
                 this.vm = vm;
+
+                var (u0, v0, u1, v1) = context.monospaceFont[' '];
+                characterSize = new Vector2(u1 - u0, v1 - v0);
 
                 hexEditorFontString = context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -0.9f), 0.055f);
                 FillFontString();
@@ -56,10 +62,10 @@ namespace Pengu.Renderer
                     "╟" + new string('─', addressSizeBytes * 2 + 2) + "┼" + new string('─', editorLineBytes * 3 + 1) + "╢\n" +
                     string.Concat(Enumerable.Range(0, linesCount).Select(lineIdx =>
                         $"║ {lineIdx * editorLineBytes:X4} │ {string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => TryGetHexAt(vm.Memory, lineIdx * editorLineBytes + idx)))} ║\n")) +
-                    "╚" + frameForAddress + "╧" + new string('═', editorLineBytes * 3 + 1) + "╝\n" +
-                    "\n ASM: " + (InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---"),
-
-                    FontColor.Black, FontColor.BrightGreen, new[]
+                    "╟" + new string('─', addressSizeBytes * 2 + 2) + "┴" + new string('─', editorLineBytes * 3 + 1) + "╢\n" +
+                    "║ ASM: " + (InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---").PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 2) + "║\n" +
+                    "╚" + new string('═', addressSizeBytes * 2 + 2 + 1 + editorLineBytes * 3 + 1) + "╝",
+                    FontColor.Black, FontColor.BrightGreen, null, new[]
                     {
                         (1 + frameForAddress.Length + 1 + titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2, title.Length + 2, FontColor.White, FontColor.Black, false),
                         (headerAddress0, 2, FontColor.Black, FontColor.BrightCyan, true),
@@ -81,9 +87,42 @@ namespace Pengu.Renderer
                 }
             }
 
-            public bool ProcessKey(Keys key, int scanCode, InputState state, ModifierKeys modifiers)
+            double lastX, lastY;
+            bool dragging = false;
+
+            public bool ProcessMouseMove(double x, double y)
             {
-                if (key == Keys.Right && state != InputState.Release && modifiers.HasFlag(ModifierKeys.Control))
+                Debug.WriteLine($"{x:0.00000} ({x - lastX:0.00000}), {y:0.00000} ({y - lastY:0.00000})");
+
+                if (dragging)
+                {
+                    // update the offset
+                    hexEditorFontString.Set(null, null, null, new Vector2(
+                        (float)(lastX + Math.Round((x - lastX) / characterSize.X * 2, 0) * characterSize.X),
+                        (float)(lastY + Math.Round((y - lastY) / characterSize.Y * 2, 0) * characterSize.Y)), null);
+                }
+                else
+                {
+                    lastX = x;
+                    lastY = y;
+                }
+
+                return false;
+            }
+
+            public bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers)
+            {
+                if (button == MouseButton.Left && action == InputState.Press)
+                    dragging = true;
+                else if (button == MouseButton.Left && action == InputState.Release)
+                    dragging = false;
+
+                return false;
+            }
+
+            public bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers)
+            {
+                if (key == Keys.Right && action != InputState.Release && modifiers.HasFlag(ModifierKeys.Control))
                 {
                     InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out var size);
                     if (size == 0) size = 1;
@@ -92,11 +131,11 @@ namespace Pengu.Renderer
                     return true;
                 }
 
-                if (key == Keys.Left && state != InputState.Release && selectedHalfByte > 0) { --selectedHalfByte; dirty = true; return true; }
-                if (key == Keys.Right && state != InputState.Release && selectedHalfByte < vm.Memory.Length * 2 - 1) { ++selectedHalfByte; dirty = true; return true; }
+                if (key == Keys.Left && action != InputState.Release && selectedHalfByte > 0) { --selectedHalfByte; dirty = true; return true; }
+                if (key == Keys.Right && action != InputState.Release && selectedHalfByte < vm.Memory.Length * 2 - 1) { ++selectedHalfByte; dirty = true; return true; }
 
-                if (key == Keys.Up && state != InputState.Release && selectedHalfByte >= editorLineBytes * 2) { selectedHalfByte -= editorLineBytes * 2; dirty = true; return true; }
-                if (key == Keys.Down && state != InputState.Release && selectedHalfByte < vm.Memory.Length * 2 - editorLineBytes * 2) { selectedHalfByte += editorLineBytes * 2; dirty = true; return true; }
+                if (key == Keys.Up && action != InputState.Release && selectedHalfByte >= editorLineBytes * 2) { selectedHalfByte -= editorLineBytes * 2; dirty = true; return true; }
+                if (key == Keys.Down && action != InputState.Release && selectedHalfByte < vm.Memory.Length * 2 - editorLineBytes * 2) { selectedHalfByte += editorLineBytes * 2; dirty = true; return true; }
 
                 void UpdateHalfByteWithNumber(int n)
                 {
@@ -111,9 +150,9 @@ namespace Pengu.Renderer
                     dirty = true;
                 }
 
-                if (key >= Keys.Numpad0 && key <= Keys.Numpad9 && state != InputState.Release) { UpdateHalfByteWithNumber(key - Keys.Numpad0); return true; }
-                if (key >= Keys.Alpha0 && key <= Keys.Alpha9 && state != InputState.Release) { UpdateHalfByteWithNumber(key - Keys.Alpha0); return true; }
-                if (key >= Keys.A && key <= Keys.F && state != InputState.Release) { UpdateHalfByteWithNumber(key - Keys.A + 10); return true; }
+                if (key >= Keys.Numpad0 && key <= Keys.Numpad9 && action != InputState.Release) { UpdateHalfByteWithNumber(key - Keys.Numpad0); return true; }
+                if (key >= Keys.Alpha0 && key <= Keys.Alpha9 && action != InputState.Release) { UpdateHalfByteWithNumber(key - Keys.Alpha0); return true; }
+                if (key >= Keys.A && key <= Keys.F && action != InputState.Release) { UpdateHalfByteWithNumber(key - Keys.A + 10); return true; }
 
                 return false;
             }

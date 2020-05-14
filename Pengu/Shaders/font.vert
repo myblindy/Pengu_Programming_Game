@@ -30,6 +30,7 @@ layout(binding = 0) uniform UniformBufferObject
 
 layout(location = 0) in vec4 inPosUv;
 layout(location = 1) in int bgFgSelected;
+layout(location = 2) in vec2 offset;
 
 layout(location = 0) out vec4 fragBackgroundColor;
 layout(location = 1) out vec4 fragColor;
@@ -37,7 +38,7 @@ layout(location = 2) out vec2 fragTexCoord;
 
 void main() 
 {
-    gl_Position = vec4(inPosUv.xy, 0.0, 1.0);
+    gl_Position = vec4(inPosUv.xy + offset, 0.0, 1.0);
 
     fragBackgroundColor = colors[bgFgSelected >> 16];
     fragColor = colors[(bgFgSelected >> 8) & 0xFF];

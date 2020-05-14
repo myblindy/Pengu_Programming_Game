@@ -40,7 +40,7 @@ namespace Pengu.Renderer
                 var frameForHexDump = new string('═', editorLineBytes * 3 + 1);
 
                 const int windowFrameWidth = 1 + addressSizeBytes * 2 + 2 + 1 + editorLineBytes * 3 + 1 + 1;
-                const string title = "HEX EDITOR";
+                const string title = "HEX EDITOR";
                 int titleHalfOffset = (windowFrameWidth - title.Length) / 2;
 
                 var line = Math.DivRem(selectedHalfByte, editorLineBytes * 2, out var halfIndexInLine);
@@ -51,7 +51,7 @@ namespace Pengu.Renderer
                 var value0 = leftAddress0 + 4 + 3 + 3 * (halfIndexInLine / 2) + halfIndexInLine % 2;
 
                 hexEditorFontString.Set(
-                    "╔" + frameForAddress + "╤" + new string('═', titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2) + " " + title + " " + new string('═', titleHalfOffset) + "╗\n" +
+                    "╔" + frameForAddress + "╤" + new string('═', titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2) + " " + title + " " + new string('═', titleHalfOffset) + "╗\n" +
                     "║" + new string(' ', addressSizeBytes * 2 + 2) + "│" + string.Concat(Enumerable.Range(0, editorLineBytes).Select(idx => $" {idx:X2}")) + " ║\n" +
                     "╟" + new string('─', addressSizeBytes * 2 + 2) + "┼" + new string('─', editorLineBytes * 3 + 1) + "╢\n" +
                     string.Concat(Enumerable.Range(0, linesCount).Select(lineIdx =>

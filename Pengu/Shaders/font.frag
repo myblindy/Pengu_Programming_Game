@@ -12,5 +12,8 @@ layout(location = 0) out vec4 outColor;
 void main() 
 {
     vec4 texColor = texture(texSampler, fragTexCoord);
-    outColor = (texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1 ? fragBackgroundColor : fragColor);// * texColor;
+    if(texColor.r < 0.1)
+        outColor = fragBackgroundColor;
+    else
+        outColor = fragColor;
 }

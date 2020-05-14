@@ -276,7 +276,7 @@ namespace Pengu.Renderer
                                     }
                                     else
                                     {
-                                        var (u0, v0, u1, v1) = Characters[ch];
+                                        var (u0, v0, u1, v1) = Characters[ch == ' ' ? ' ' : ch];
                                         var aspect = (u1 - u0) / (v1 - v0);
                                         var xSize = fs.Size * aspect;
 
@@ -416,7 +416,7 @@ namespace Pengu.Renderer
                     if (Overrides[idx].start + Overrides[idx].count <= needle)
                         min = idx;
                     else
-                        max = idx; 
+                        max = idx;
                     idx = (max - min) / 2 + min;
                 }
             }

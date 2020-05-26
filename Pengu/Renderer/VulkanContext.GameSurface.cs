@@ -88,18 +88,18 @@ namespace Pengu.Renderer
             }
 
             double lastX, lastY;
+            Vector2 originalOffset;
             bool dragging = false;
 
             public bool ProcessMouseMove(double x, double y)
             {
-                Debug.WriteLine($"{x:0.00000} ({x - lastX:0.00000}), {y:0.00000} ({y - lastY:0.00000})");
-
                 if (dragging)
                 {
                     // update the offset
-                    hexEditorFontString.Set(null, null, null, new Vector2(
-                        (float)(lastX + Math.Round((x - lastX) / characterSize.X * 2, 0) * characterSize.X),
-                        (float)(lastY + Math.Round((y - lastY) / characterSize.Y * 2, 0) * characterSize.Y)), null);
+                    var xFontSize = hexEditorFontString.Size / characterSize.Y * characterSize.X;
+                    hexEditorFontString.Set(null, null, null, originalOffset + new Vector2(
+                        (float)(Math.Round((x - lastX) / xFontSize * 2, 0) * xFontSize),
+                        (float)(Math.Round((y - lastY) / hexEditorFontString.Size * 2, 0) * hexEditorFontString.Size)), null);
                 }
                 else
                 {
@@ -113,7 +113,10 @@ namespace Pengu.Renderer
             public bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers)
             {
                 if (button == MouseButton.Left && action == InputState.Press)
+                {
                     dragging = true;
+                    originalOffset = hexEditorFontString.Offset;
+                }
                 else if (button == MouseButton.Left && action == InputState.Release)
                     dragging = false;
 

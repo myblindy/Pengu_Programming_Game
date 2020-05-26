@@ -32,19 +32,6 @@ mov [0] r0", vm);
 
             using var renderer = new VulkanContext(vm, debug);
             renderer.Run();
-
-            //vm.Reset();
-            //vm.RunNextInstruction(int.MaxValue);
-
-            //Debug.WriteLine($"R: {vm.Registers[0]:X4} MEM: {string.Join(" ", vm.Memory.Select(m => m.ToString("X2")))}");
-
-            //for (var m = vm.Memory.AsMemory(vm.StartInstructionPointer..); m.Length > 0;)
-            //{
-            //    var line = InstructionSet.Disassemble(m, out var size);
-            //    if (line is null) break;
-            //    Debug.WriteLine(line);
-            //    m = m.Slice(size);
-            //}
         }
     }
 }

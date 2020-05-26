@@ -16,22 +16,23 @@ using SixLabors.ImageSharp.PixelFormats;
 using System.Numerics;
 using System.Collections.Specialized;
 using static MoreLinq.Extensions.ForEachExtension;
+using Pengu.VirtualMachine;
 
 using Image = SharpVk.Image;
 using Buffer = SharpVk.Buffer;
 using Version = SharpVk.Version;
 using Constants = SharpVk.Constants;
 using Exception = System.Exception;
-using Pengu.VirtualMachine;
 
 namespace Pengu.Renderer
 {
     public partial class VulkanContext : IDisposable
     {
-        NativeWindow window;
+        readonly NativeWindow window;
+        readonly Instance instance;
+        readonly DebugReportCallback debugReportCallback;
+
         Extent2D extent;
-        Instance instance;
-        DebugReportCallback debugReportCallback;
         Surface surface;
         PhysicalDevice physicalDevice;
         Device device;
@@ -536,33 +537,34 @@ namespace Pengu.Renderer
         }
 
         static readonly TimeSpan fpsMeasurementInterval = TimeSpan.FromSeconds(1);
-        DateTime nextFpsMeasurement = DateTime.Now + fpsMeasurementInterval;
+        TimeSpan nextFpsMeasurement = fpsMeasurementInterval;
         int framesRendered;
 
         internal void Run()
         {
-            DateTime lastUpdateAt = DateTime.Now;
+            var sw = Stopwatch.StartNew();
+            TimeSpan lastElapsed = default;
 
             while (!window.IsClosing)
             {
-                var now = DateTime.Now;
+                var totalElapsed = sw.Elapsed;
 
                 ++framesRendered;
-                if (now >= nextFpsMeasurement)
+                if (totalElapsed >= nextFpsMeasurement)
                 {
-                    fontStringFps.Set($"FPS: {framesRendered / (now - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds:0.00} Font Verts: {monospaceFont.UsedVertices} used out of {monospaceFont.MaxVertices}",
+                    fontStringFps.Set($"FPS: {framesRendered / (totalElapsed - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds:0.00} Font Verts: {monospaceFont.UsedVertices} used out of {monospaceFont.MaxVertices}",
                         FontColor.Black, FontColor.White, null, null);
 
                     framesRendered = 0;
-                    nextFpsMeasurement = now + fpsMeasurementInterval;
+                    nextFpsMeasurement = totalElapsed + fpsMeasurementInterval;
                 }
 
-                UpdateLogic(now - lastUpdateAt);
+                UpdateLogic(totalElapsed - lastElapsed);
                 DrawFrame();
 
                 Glfw.PollEvents();
 
-                lastUpdateAt = now;
+                lastElapsed = totalElapsed;
             }
         }
 

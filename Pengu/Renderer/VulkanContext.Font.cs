@@ -441,12 +441,13 @@ namespace Pengu.Renderer
                     return;
                 }
 
-                font.IsCommandBufferDirty = !(value is null) && (string.IsNullOrWhiteSpace(Value) ? 0 : Value.Length) != (string.IsNullOrWhiteSpace(value) ? 0 : value.Length);
+                var nonSpaceLengthNewValue = value?.Count(c => c != '\n' && c != ' ') ?? 0;
+                font.IsCommandBufferDirty = Length != nonSpaceLengthNewValue;
 
                 if (!(value is null))
                 {
                     Value = value;
-                    Length = value.Count(c => c != '\n' && c != ' ');
+                    Length = nonSpaceLengthNewValue;
                 }
                 if (defaultBg.HasValue) DefaultBackground = defaultBg.Value;
                 if (defaultFg.HasValue) DefaultForeground = defaultFg.Value;

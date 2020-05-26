@@ -51,7 +51,83 @@ namespace Pengu.Renderer
         Font monospaceFont;
         FontString fontStringFps;
 
-        GameSurface gameSurface;
+        struct Ray
+        {
+            public Vector2 Position, Direction;
+
+            public float Cast(ref Wall wall)
+            {
+                var wallABdX = wall.A.X - wall.B.X;
+                var wallABdY = wall.A.Y - wall.B.Y;
+                var den = wallABdX * (-Direction.Y) - wallABdY * (-Direction.X);
+                if (den != 0)
+                {
+                    var wallAYminusPositionY = wall.A.Y - Position.Y;
+                    var wallAXminusPositionX = wall.A.X - Position.X;
+
+                    var t = (wallAXminusPositionX * (-Direction.Y) - wallAYminusPositionY * (-Direction.X)) / den;
+
+                    if (0 <= t && t <= 1)
+                    {
+                        var u = -(wallABdX * wallAYminusPositionY - wallABdY * wallAXminusPositionX) / den;
+
+                        if (u >= 0)
+                            return u;
+                    }
+                }
+
+                return float.NaN;
+            }
+        }
+
+        struct Wall
+        {
+            public Vector2 A, B;
+        }
+
+        const int RayCount = 360;
+        Ray[] Rays = new Ray[RayCount];
+
+        const int WallCount = 10;
+        Wall[] Walls = new Wall[WallCount];
+
+        const int VertexCount = RayCount * 2 + WallCount * 2;
+        Buffer vertexBuffer, stagingVertexBuffer;
+        DeviceMemory vertexBufferMemory, stagingVertexBufferMemory;
+
+        bool VerticesPublished = false;
+
+        Pipeline pipeline;
+
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        struct LineVertex
+        {
+            public Vector2 pos;
+
+            public LineVertex(Vector2 pos) => this.pos = pos;
+
+            public static readonly uint Size = (uint)Marshal.SizeOf<LineVertex>();
+
+            public static readonly VertexInputBindingDescription BindingDescription =
+                new VertexInputBindingDescription
+                {
+                    Binding = 0,
+                    Stride = Size,
+                    InputRate = VertexInputRate.Vertex
+                };
+
+            public static readonly VertexInputAttributeDescription[] AttributeDescriptions =
+                new[]
+                {
+                    new VertexInputAttributeDescription
+                    {
+                        Binding = 0,
+                        Location = 0,
+                        Format = Format.R32G32SFloat,
+                        Offset = (uint)Marshal.OffsetOf<LineVertex>(nameof(pos)),
+                    },
+                };
+        }
 
         Semaphore[] imageAvailableSemaphores, renderingFinishedSemaphores;
         Fence[] inflightFences, imagesInFlight;
@@ -134,8 +210,8 @@ namespace Pengu.Renderer
         {
             ContextInstance = this;
 
-            const int Width = 1280;
-            const int Height = 720;
+            const int Width = 1000;
+            const int Height = 1000;
 
             Glfw.WindowHint(Hint.ClientApi, ClientApi.None);        // Vulkan API
             Glfw.Init();
@@ -307,7 +383,96 @@ namespace Pengu.Renderer
             monospaceFont = new Font(this, "pt_mono");
             fontStringFps = monospaceFont.AllocateString(new Vector2(-1f * extent.AspectRatio, -.995f), .033f);
 
-            gameSurface = new GameSurface(this, vm);
+            var rnd = new Random();
+            for (int i = 4; i < WallCount; ++i)
+                Walls[i] = new Wall
+                {
+                    A = new Vector2(((float)rnd.NextDouble() - 0.5f) * 2f, ((float)rnd.NextDouble() - 0.5f) * 2f),
+                    B = new Vector2(((float)rnd.NextDouble() - 0.5f) * 2f, ((float)rnd.NextDouble() - 0.5f) * 2f)
+                };
+            Walls[0] = new Wall { A = new Vector2(-1, -1), B = new Vector2(-1, 1) };
+            Walls[1] = new Wall { A = new Vector2(-1, -1), B = new Vector2(1, -1) };
+            Walls[2] = new Wall { A = new Vector2(1, 1), B = new Vector2(-1, 1) };
+            Walls[3] = new Wall { A = new Vector2(1, 1), B = new Vector2(1, -1) };
+
+            for (int i = 0; i < RayCount; ++i)
+                Rays[i] = new Ray { Direction = new Vector2(MathF.Sin(2 * MathF.PI * i / (RayCount - 1)), MathF.Cos(2 * MathF.PI * i / (RayCount - 1))) };
+
+            stagingVertexBuffer = CreateBuffer(VertexCount * LineVertex.Size, BufferUsageFlags.TransferSource,
+                MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingVertexBufferMemory);
+
+            vertexBuffer = CreateBuffer(VertexCount * LineVertex.Size, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer,
+                MemoryPropertyFlags.DeviceLocal, out vertexBufferMemory);
+
+            using var vShader = CreateShaderModule("line.vert.spv");
+            using var fShader = CreateShaderModule("line.frag.spv");
+
+            var pipelineLayout = device.CreatePipelineLayout(null, null);
+
+            pipeline = device.CreateGraphicsPipeline(null,
+                new[]
+                {
+                    new PipelineShaderStageCreateInfo { Stage = ShaderStageFlags.Vertex, Module = vShader, Name = "main" },
+                    new PipelineShaderStageCreateInfo { Stage = ShaderStageFlags.Fragment, Module = fShader, Name = "main" },
+                },
+                new PipelineRasterizationStateCreateInfo { LineWidth = 1 },
+                pipelineLayout, renderPass, 0, null, -1,
+                vertexInputState: new PipelineVertexInputStateCreateInfo
+                {
+                    VertexAttributeDescriptions = LineVertex.AttributeDescriptions,
+                    VertexBindingDescriptions = new[] { LineVertex.BindingDescription },
+                },
+                inputAssemblyState: new PipelineInputAssemblyStateCreateInfo { Topology = PrimitiveTopology.LineList },
+                viewportState: new PipelineViewportStateCreateInfo
+                {
+                    Viewports = new[] { new Viewport(0, 0, extent.Width, extent.Height, 0, 1) },
+                    Scissors = new[] { new Rect2D(extent) },
+                },
+                colorBlendState: new PipelineColorBlendStateCreateInfo
+                {
+                    Attachments = new[]
+                    {
+                        new PipelineColorBlendAttachmentState
+                        {
+                            ColorWriteMask = ColorComponentFlags.R | ColorComponentFlags.G | ColorComponentFlags.B | ColorComponentFlags.A,
+                        }
+                    }
+                },
+                multisampleState: new PipelineMultisampleStateCreateInfo
+                {
+                    SampleShadingEnable = false,
+                    RasterizationSamples = SampleCountFlags.SampleCount1,
+                    MinSampleShading = 1
+                });
+        }
+
+        private unsafe void PublishWallsRays()
+        {
+            var vertexPtr = (LineVertex*)stagingVertexBufferMemory.Map(0, VertexCount * LineVertex.Size);
+            for (int wallIdx = 0; wallIdx < WallCount; ++wallIdx)
+            {
+                *vertexPtr++ = new LineVertex(Walls[wallIdx].A);
+                *vertexPtr++ = new LineVertex(Walls[wallIdx].B);
+            }
+
+            for (int rayIdx = 0; rayIdx < RayCount; ++rayIdx)
+            {
+                // update ray
+                float maxU = float.MaxValue;
+
+                for (int wallIdx = 0; wallIdx < WallCount; ++wallIdx)
+                {
+                    var u = Rays[rayIdx].Cast(ref Walls[wallIdx]);
+                    if (!float.IsNaN(u) && u < maxU)
+                        maxU = u;
+                }
+
+                *vertexPtr++ = new LineVertex(Rays[rayIdx].Position);
+                *vertexPtr++ = new LineVertex(Rays[rayIdx].Position + (maxU == float.MaxValue ? Vector2.Zero : maxU * Rays[rayIdx].Direction));
+            }
+            stagingVertexBufferMemory.Unmap();
+
+            CopyBuffer(stagingVertexBuffer, vertexBuffer, VertexCount * LineVertex.Size);
         }
 
         ShaderModule CreateShaderModule(string filePath)
@@ -465,23 +630,19 @@ namespace Pengu.Renderer
 
         private void UpdateLogic(TimeSpan elapsedTime)
         {
+            MouseMoveAction? lastMouseMoveAction = default;
             while (InputActionQueue.Count > 0)
-            {
                 switch (InputActionQueue.Dequeue())
                 {
-                    case KeyAction keyAction:
-                        gameSurface.ProcessKey(keyAction.Key, keyAction.ScanCode, keyAction.Action, keyAction.Modifiers);
-                        break;
                     case MouseMoveAction mouseMoveAction:
-                        gameSurface.ProcessMouseMove(mouseMoveAction.X, mouseMoveAction.Y);
-                        break;
-                    case MouseButtonAction mouseButton:
-                        gameSurface.ProcessMouseButton(mouseButton.Button, mouseButton.Action, mouseButton.Modifiers);
+                        lastMouseMoveAction = mouseMoveAction;
                         break;
                 }
-            }
 
-            gameSurface.UpdateLogic(elapsedTime);
+            if (lastMouseMoveAction.HasValue)
+                for (int i = 0; i < RayCount; ++i)
+                    Rays[i].Position = new Vector2((float)(lastMouseMoveAction.Value.X - 0.5) * 2, (float)(lastMouseMoveAction.Value.Y - 0.5) * 2);
+
             monospaceFont.UpdateLogic(elapsedTime);
         }
 
@@ -499,14 +660,14 @@ namespace Pengu.Renderer
 
             device.ResetFences(inflightFences[currentFrame]);
 
-            if (monospaceFont.IsCommandBufferDirty)
+            if (monospaceFont.IsCommandBufferDirty || !VerticesPublished)
             {
                 Enumerable.Range(0, swapChainImageCommandBuffers.Length).ForEach(idx => swapChainImageCommandBuffersDirty[idx] = true);
-                monospaceFont.IsCommandBufferDirty = false;
+                monospaceFont.IsCommandBufferDirty = VerticesPublished = false;
             }
 
-            gameSurface.PreRender(nextImage);
             monospaceFont.PreRender(nextImage);
+            PublishWallsRays();
 
             if (swapChainImageCommandBuffersDirty[(int)nextImage])
             {
@@ -514,7 +675,15 @@ namespace Pengu.Renderer
 
                 commandBuffer.Begin(CommandBufferUsageFlags.SimultaneousUse);
                 commandBuffer.BeginRenderPass(renderPass, swapChainFramebuffers[nextImage], new Rect2D(extent), new ClearValue(), SubpassContents.Inline);
+
+                // draw lines
+                commandBuffer.BindPipeline(PipelineBindPoint.Graphics, pipeline);
+                commandBuffer.BindVertexBuffers(0, vertexBuffer, 0);
+                commandBuffer.Draw(VertexCount, 1, 0, 0);
+
+                // draw font
                 monospaceFont.Draw(commandBuffer, (int)nextImage);
+
                 commandBuffer.EndRenderPass();
                 commandBuffer.End();
 

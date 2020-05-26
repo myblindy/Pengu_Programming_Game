@@ -26,7 +26,7 @@ using Exception = System.Exception;
 
 namespace Pengu.Renderer
 {
-    public partial class VulkanContext : IDisposable
+    public unsafe partial class VulkanContext : IDisposable
     {
         readonly NativeWindow window;
         readonly Instance instance;
@@ -85,7 +85,7 @@ namespace Pengu.Renderer
             public Vector2 A, B;
         }
 
-        const int RayCount = 360;
+        const int RayCount = 360 * 2;
         Ray[] Rays = new Ray[RayCount];
 
         const int WallCount = 10;
@@ -95,7 +95,10 @@ namespace Pengu.Renderer
         Buffer vertexBuffer, stagingVertexBuffer;
         DeviceMemory vertexBufferMemory, stagingVertexBufferMemory;
 
+        LineVertex* lineVertexStartPtr;
+
         bool VerticesPublished = false;
+        bool VerticesDirty = true;
 
         Pipeline pipeline;
 
@@ -272,10 +275,12 @@ namespace Pengu.Renderer
             _ = Vulkan.CreateWindowSurface(new IntPtr((long)instance.RawHandle.ToUInt64()), window.Handle, IntPtr.Zero, out var surfacePtr);
             surface = Surface.CreateFromHandle(instance, (ulong)surfacePtr.ToInt64());
 
-            (physicalDevice, queueIndices) = instance.EnumeratePhysicalDevices()
-                .Select(device => (device, q: QueueFamilyIndices.Find(device, surface)))
+            PhysicalDeviceProperties physicalDeviceProperties;
+            (physicalDevice, queueIndices, physicalDeviceProperties) = instance.EnumeratePhysicalDevices()
+                .Select(device => (device, q: QueueFamilyIndices.Find(device, surface), p: device.GetProperties()))
                 .Where(w => w.device.EnumerateDeviceExtensionProperties(null)
                     .Any(extension => extension.ExtensionName == KhrExtensions.Swapchain) && w.q.IsComplete)
+                .OrderByDescending(w => w.p.DeviceType == PhysicalDeviceType.DiscreteGpu)                           // select discrete GPU first
                 .First();
             var indices = queueIndices.Indices.ToArray();
 
@@ -404,6 +409,8 @@ namespace Pengu.Renderer
             vertexBuffer = CreateBuffer(VertexCount * LineVertex.Size, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer,
                 MemoryPropertyFlags.DeviceLocal, out vertexBufferMemory);
 
+            lineVertexStartPtr = (LineVertex*)stagingVertexBufferMemory.Map(0, VertexCount * LineVertex.Size);
+
             using var vShader = CreateShaderModule("line.vert.spv");
             using var fShader = CreateShaderModule("line.frag.spv");
 
@@ -448,11 +455,14 @@ namespace Pengu.Renderer
 
         private unsafe void PublishWallsRays()
         {
-            var vertexPtr = (LineVertex*)stagingVertexBufferMemory.Map(0, VertexCount * LineVertex.Size);
+            if (!VerticesDirty) return;
+
+            var lineVertexPtr = lineVertexStartPtr;
+
             for (int wallIdx = 0; wallIdx < WallCount; ++wallIdx)
             {
-                *vertexPtr++ = new LineVertex(Walls[wallIdx].A);
-                *vertexPtr++ = new LineVertex(Walls[wallIdx].B);
+                *lineVertexPtr++ = new LineVertex(Walls[wallIdx].A);
+                *lineVertexPtr++ = new LineVertex(Walls[wallIdx].B);
             }
 
             for (int rayIdx = 0; rayIdx < RayCount; ++rayIdx)
@@ -467,12 +477,13 @@ namespace Pengu.Renderer
                         maxU = u;
                 }
 
-                *vertexPtr++ = new LineVertex(Rays[rayIdx].Position);
-                *vertexPtr++ = new LineVertex(Rays[rayIdx].Position + (maxU == float.MaxValue ? Vector2.Zero : maxU * Rays[rayIdx].Direction));
+                *lineVertexPtr++ = new LineVertex(Rays[rayIdx].Position);
+                *lineVertexPtr++ = new LineVertex(Rays[rayIdx].Position + (maxU == float.MaxValue ? Vector2.Zero : maxU * Rays[rayIdx].Direction));
             }
-            stagingVertexBufferMemory.Unmap();
 
             CopyBuffer(stagingVertexBuffer, vertexBuffer, VertexCount * LineVertex.Size);
+
+            VerticesDirty = false;
         }
 
         ShaderModule CreateShaderModule(string filePath)
@@ -640,8 +651,11 @@ namespace Pengu.Renderer
                 }
 
             if (lastMouseMoveAction.HasValue)
+            {
                 for (int i = 0; i < RayCount; ++i)
                     Rays[i].Position = new Vector2((float)(lastMouseMoveAction.Value.X - 0.5) * 2, (float)(lastMouseMoveAction.Value.Y - 0.5) * 2);
+                VerticesDirty = true;
+            }
 
             monospaceFont.UpdateLogic(elapsedTime);
         }
@@ -721,7 +735,7 @@ namespace Pengu.Renderer
                 ++framesRendered;
                 if (totalElapsed >= nextFpsMeasurement)
                 {
-                    fontStringFps.Set($"FPS: {framesRendered / (totalElapsed - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds:0.00} Font Verts: {monospaceFont.UsedVertices} used out of {monospaceFont.MaxVertices}",
+                    fontStringFps.Set($"FPS: {framesRendered / (totalElapsed - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds:0.00} Font Verts: {monospaceFont.UsedVertices}/{monospaceFont.MaxVertices} Line Verts: {VertexCount}",
                         FontColor.Black, FontColor.White, null, null);
 
                     framesRendered = 0;

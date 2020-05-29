@@ -432,7 +432,8 @@ namespace Pengu.Renderer
                 }
             }
 
-            public void Set(string value, FontColor? defaultBg, FontColor? defaultFg, Vector2? offset, (int start, int count, FontColor bg, FontColor fg, bool selected)[] overrides)
+            public void Set(string value = null, FontColor? defaultBg = null, FontColor? defaultFg = null, Vector2? offset = null,
+                (int start, int count, FontColor bg, FontColor fg, bool selected)[] overrides = null)
             {
                 if ((value is null || value == Value) && (!defaultBg.HasValue || defaultBg == DefaultBackground) &&
                     (!defaultFg.HasValue || defaultFg == DefaultForeground) && (!offset.HasValue || offset == Offset) &&

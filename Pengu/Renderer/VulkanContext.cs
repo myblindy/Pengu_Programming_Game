@@ -307,7 +307,8 @@ namespace Pengu.Renderer
             monospaceFont = new Font(this, "pt_mono");
             fontStringFps = monospaceFont.AllocateString(new Vector2(-1f * extent.AspectRatio, -.995f), .033f);
 
-            gameSurface = new GameSurface(this, vm);
+            gameSurface = new GameSurface(this);
+            gameSurface.AddHexEditorWindow(vm);
         }
 
         ShaderModule CreateShaderModule(string filePath)
@@ -553,7 +554,7 @@ namespace Pengu.Renderer
                 if (totalElapsed >= nextFpsMeasurement)
                 {
                     fontStringFps.Set($"FPS: {framesRendered / (totalElapsed - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds:0.00} Font Verts: {monospaceFont.UsedVertices} used out of {monospaceFont.MaxVertices}",
-                        FontColor.Black, FontColor.White, null, null);
+                        FontColor.Black, FontColor.White);
 
                     framesRendered = 0;
                     nextFpsMeasurement = totalElapsed + fpsMeasurementInterval;
@@ -612,7 +613,7 @@ namespace Pengu.Renderer
         #endregion
     }
 
-    public interface IRenderableModule
+    interface IRenderableModule
     {
         public bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers);
         public bool ProcessMouseMove(double x, double y);

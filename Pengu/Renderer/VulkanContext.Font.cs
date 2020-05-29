@@ -379,7 +379,9 @@ namespace Pengu.Renderer
                     fontTextureImageView.Dispose();
                     fontTextureImage.Dispose();
                     fontTextureImageMemory.Free();
+                    descriptorSetLayout.Dispose();
                     pipeline.Dispose();
+                    pipelineLayout.Dispose();
                     uniformBuffers.ForEach(w => w.Dispose());
                     uniformBufferMemories.ForEach(w => w.Free());
                     DisposeVertexIndexBuffers();

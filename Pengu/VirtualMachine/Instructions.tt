@@ -106,16 +106,16 @@ namespace Pengu.VirtualMachine
 	[System.CodeDom.Compiler.GeneratedCode("Instructions.tt", null)]
 	internal static class InstructionSet
 	{
-		public static readonly Dictionary<Instruction, Func<VM, ushort, ushort>> InstructionDefinitions =
-			new Dictionary<Instruction, Func<VM, ushort, ushort>>()
-		{
-			<# foreach(var (name, code) in instructions) { #>
-				[Instruction.<#= name #>] = (vm, m) =>
-				{
-					<#= code #>
-				},
-			<# } #>
-		};
+		public static readonly Func<VM, ushort, ushort>[] InstructionDefinitions =
+			new Func<VM, ushort, ushort>[]
+			{
+				<# foreach(var (name, code) in instructions) { #>
+					(vm, m) =>
+					{
+						<#= code #>
+					},
+				<# } #>
+			};
 
 		static readonly Dictionary<Instruction, Func<Memory<byte>, (string result, int size)>> InstructionDecompilation = 
 			new Dictionary<Instruction, Func<Memory<byte>, (string result, int size)>>()

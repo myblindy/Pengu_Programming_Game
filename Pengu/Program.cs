@@ -16,7 +16,7 @@ namespace Pengu
             const bool debug = false;
 #endif
 
-            var vm = new VM(registers: 1, memory: 20);
+            var vm = new VM(VMType.BitLength8, registers: 1, memory: 20);
 
             InstructionSet.Assemble(@"
 @1

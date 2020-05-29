@@ -199,3 +199,6 @@ dotnet_naming_style.begins_with_i.capitalization = pascal_case
 
 # CA1303: Do not pass literals as localized parameters
 dotnet_diagnostic.CA1303.severity = silent
+
+# CA1819: Properties should not return arrays
+dotnet_diagnostic.CA1819.severity = silent

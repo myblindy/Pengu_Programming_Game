@@ -17,7 +17,6 @@ namespace Pengu.Renderer
             const int linesCount = 15;
 
             int selectedHalfByte;
-            int positionX, positionY = 3;
 
             public HexEditorWindow(VulkanContext context, GameSurface surface, VM vm) : base(context, surface)
             {

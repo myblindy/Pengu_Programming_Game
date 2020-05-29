@@ -12,10 +12,10 @@ namespace Pengu.Renderer
             protected readonly GameSurface surface;
             protected FontString fontString;
             protected bool fontStringDirty = false;
+            protected int positionX, positionY = 3;
 
             bool dragging;
 
-            Vector2 originalOffset;
             Vector2 lastMouseCharacterPosition, newMouseCharacterPosition;
 
             public BaseWindow(VulkanContext context, GameSurface surface) =>
@@ -37,13 +37,12 @@ namespace Pengu.Renderer
             public virtual bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers)
             {
                 if (button == MouseButton.Left && action == InputState.Press)
-                {
                     dragging = true;
-                    originalOffset = fontString.Offset;
-                }
                 else if (button == MouseButton.Left && action == InputState.Release)
                 {
                     dragging = false;
+                    var dXY = newMouseCharacterPosition - lastMouseCharacterPosition;
+                    (positionX, positionY) = (positionX + (int)dXY.X, positionY + (int)dXY.Y);
                     lastMouseCharacterPosition = newMouseCharacterPosition;     // write the current mouse position
                 }
 
@@ -57,8 +56,8 @@ namespace Pengu.Renderer
                 if (dragging)
                 {
                     // update the offset
-                    fontString.Set(offset: originalOffset +
-                        surface.CharacterToScreenSize(newMouseCharacterPosition - lastMouseCharacterPosition, fontString));
+                    fontString.Set(offset: surface.CharacterToScreenSize(
+                        new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition, fontString));
                 }
                 else
                     lastMouseCharacterPosition = newMouseCharacterPosition;

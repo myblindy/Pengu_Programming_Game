@@ -16,7 +16,7 @@ namespace Pengu
             const bool debug = false;
 #endif
 
-            var vm = new VM(VMType.BitLength8, registers: 1, memory: 20);
+            var vm = new VM(VMType.BitLength8, registers: 1, memory: 30);
 
             InstructionSet.Assemble(@"
 @1
@@ -24,11 +24,20 @@ db 2
 db 15
 
 org
-mov r0 [1]
-muli r0 r0
-addi r0 [2]
-subi r0 6
-mov [0] r0", vm);
+mov r0 0
+
+.loop1
+addi r0 1
+cmp r0 10
+jl .loop1
+
+.loop2
+subi r0 1
+cmp r0 0
+jg .loop2
+
+jmp .loop1", vm);
+            vm.Reset();
 
             using var renderer = new VulkanContext(vm, debug);
             renderer.Run();

@@ -170,7 +170,7 @@ namespace Pengu.Renderer
             else
             {
                 enabledLayers = Array.Empty<string>();
-                enabledExtensions = Vulkan.GetRequiredInstanceExtensions();
+                enabledExtensions = Vulkan.GetRequiredInstanceExtensions().ToArray();
             }
 
             instance = Instance.Create(enabledLayers, enabledExtensions,

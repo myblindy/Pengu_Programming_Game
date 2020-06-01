@@ -26,25 +26,47 @@ namespace Pengu.VirtualMachine
 					Mov_PReg_PReg, 
 					AddI_Reg_I8, 
 					AddI_Reg_Reg, 
-					AddI_Reg_PI8, 
-					AddI_Reg_PReg, 
 					SubI_Reg_I8, 
 					SubI_Reg_Reg, 
-					SubI_Reg_PI8, 
-					SubI_Reg_PReg, 
 					MulI_Reg_I8, 
 					MulI_Reg_Reg, 
-					MulI_Reg_PI8, 
-					MulI_Reg_PReg, 
 					Int_I8, 
+					Int_Reg, 
 					DivI_Reg_I8, 
 					DivI_Reg_Reg, 
-					DivI_Reg_PI8, 
-					DivI_Reg_PReg, 
 					ModI_Reg_I8, 
 					ModI_Reg_Reg, 
-					ModI_Reg_PI8, 
-					ModI_Reg_PReg, 
+					Jmp_I8, 
+					Jmp_RI8, 
+					Jmp_Reg, 
+					Jmp_RReg, 
+					Cmp_I8_I8, 
+					Cmp_Reg_I8, 
+					Cmp_Reg_Reg, 
+					Jl_I8, 
+					Jl_RI8, 
+					Jl_Reg, 
+					Jl_RReg, 
+					Jle_I8, 
+					Jle_RI8, 
+					Jle_Reg, 
+					Jle_RReg, 
+					Jg_I8, 
+					Jg_RI8, 
+					Jg_Reg, 
+					Jg_RReg, 
+					Jge_I8, 
+					Jge_RI8, 
+					Jge_Reg, 
+					Jge_RReg, 
+					Je_I8, 
+					Je_RI8, 
+					Je_Reg, 
+					Je_RReg, 
+					Jne_I8, 
+					Jne_RI8, 
+					Jne_Reg, 
+					Jne_RReg, 
 			}
 
 	[System.CodeDom.Compiler.GeneratedCode("Instructions.tt", null)]
@@ -55,14 +77,17 @@ namespace Pengu.VirtualMachine
 			{
 									(vm, m) =>
 					{
+						// Nop
 						return m;
 					},
 									(vm, m) =>
 					{
+						// Mov_Reg_I8
 						vm.Registers[vm.Memory[m]] = vm.Memory[m + 1]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// Mov_Reg_Reg
 						
 			I8ToI4I4(vm.Memory[m], out var r0, out var r1);
 			vm.Registers[r0] = vm.Registers[r1];
@@ -70,10 +95,12 @@ namespace Pengu.VirtualMachine
 					},
 									(vm, m) =>
 					{
+						// Mov_Reg_PI8
 						vm.Registers[vm.Memory[m]] = vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// Mov_Reg_PReg
 						
 		    I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] = vm.Registers[r1];
@@ -81,26 +108,32 @@ namespace Pengu.VirtualMachine
 					},
 									(vm, m) =>
 					{
+						// Mov_PI8_I8
 						vm.Memory[vm.Memory[m]] = vm.Memory[m + 1]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// Mov_PI8_Reg
 						vm.Memory[vm.Memory[m]] = (byte)vm.Registers[vm.Memory[m + 1]]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// Mov_PI8_PI8
 						vm.Memory[vm.Memory[m]] = vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// Mov_PI8_PReg
 						vm.Memory[vm.Memory[m]] = vm.Memory[vm.Registers[vm.Memory[m + 1]]]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// Mov_PReg_I8
 						vm.Memory[vm.Registers[vm.Memory[m]]] = vm.Memory[m + 1]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// Mov_PReg_Reg
 						
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Memory[vm.Registers[r0]] = (byte)vm.Registers[r1];
@@ -108,10 +141,12 @@ namespace Pengu.VirtualMachine
 					},
 									(vm, m) =>
 					{
+						// Mov_PReg_PI8
 						vm.Memory[vm.Registers[vm.Memory[m]]] = vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// Mov_PReg_PReg
 						
 			I8ToI4I4(vm.Memory[m], out var r0, out var r1);
 			vm.Memory[vm.Registers[r0]] = vm.Memory[vm.Registers[r1]];
@@ -119,10 +154,12 @@ namespace Pengu.VirtualMachine
 					},
 									(vm, m) =>
 					{
+						// AddI_Reg_I8
 						vm.Registers[vm.Memory[m]] += vm.Memory[m + 1]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// AddI_Reg_Reg
 						
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] += vm.Registers[r1];
@@ -130,21 +167,12 @@ namespace Pengu.VirtualMachine
 					},
 									(vm, m) =>
 					{
-						vm.Registers[vm.Memory[m]] += vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
-					},
-									(vm, m) =>
-					{
-						
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] += vm.Memory[vm.Registers[r1]];
-            return (ushort)(m + 1);
-					},
-									(vm, m) =>
-					{
+						// SubI_Reg_I8
 						vm.Registers[vm.Memory[m]] -= vm.Memory[m + 1]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// SubI_Reg_Reg
 						
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] -= vm.Registers[r1];
@@ -152,21 +180,12 @@ namespace Pengu.VirtualMachine
 					},
 									(vm, m) =>
 					{
-						vm.Registers[vm.Memory[m]] -= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
-					},
-									(vm, m) =>
-					{
-						
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] -= vm.Memory[vm.Registers[r1]];
-            return (ushort)(m + 1);
-					},
-									(vm, m) =>
-					{
+						// MulI_Reg_I8
 						vm.Registers[vm.Memory[m]] *= vm.Memory[m + 1]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// MulI_Reg_Reg
 						
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] *= vm.Registers[r1];
@@ -174,25 +193,22 @@ namespace Pengu.VirtualMachine
 					},
 									(vm, m) =>
 					{
-						vm.Registers[vm.Memory[m]] *= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
+						// Int_I8
+						vm.CallInterrupt(vm.Memory[m]); return (ushort)(m + 1);
 					},
 									(vm, m) =>
 					{
-						
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] *= vm.Memory[vm.Registers[r1]];
-            return (ushort)(m + 1);
+						// Int_Reg
+						vm.CallInterrupt(vm.Registers[vm.Memory[m]]); return (ushort)(m + 1);
 					},
 									(vm, m) =>
 					{
-						return (ushort)(m + 1);
-					},
-									(vm, m) =>
-					{
+						// DivI_Reg_I8
 						vm.Registers[vm.Memory[m]] /= vm.Memory[m + 1]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// DivI_Reg_Reg
 						
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] /= vm.Registers[r1];
@@ -200,21 +216,12 @@ namespace Pengu.VirtualMachine
 					},
 									(vm, m) =>
 					{
-						vm.Registers[vm.Memory[m]] /= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
-					},
-									(vm, m) =>
-					{
-						
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] /= vm.Memory[vm.Registers[r1]];
-            return (ushort)(m + 1);
-					},
-									(vm, m) =>
-					{
+						// ModI_Reg_I8
 						vm.Registers[vm.Memory[m]] %= vm.Memory[m + 1]; return (ushort)(m + 2);
 					},
 									(vm, m) =>
 					{
+						// ModI_Reg_Reg
 						
             I8ToI4I4(vm.Memory[m], out var r0, out var r1);
             vm.Registers[r0] %= vm.Registers[r1];
@@ -222,268 +229,570 @@ namespace Pengu.VirtualMachine
 					},
 									(vm, m) =>
 					{
-						vm.Registers[vm.Memory[m]] %= vm.Memory[vm.Memory[m + 1]]; return (ushort)(m + 2);
+						// Jmp_I8
+						return vm.Memory[m];
 					},
 									(vm, m) =>
 					{
-						
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] %= vm.Memory[vm.Registers[r1]];
-            return (ushort)(m + 1);
+						// Jmp_RI8
+						return (ushort)(m + 1 + vm.Memory[m]);
+					},
+									(vm, m) =>
+					{
+						// Jmp_Reg
+						return (ushort)(vm.Registers[vm.Memory[m]]);
+					},
+									(vm, m) =>
+					{
+						// Jmp_RReg
+						return (ushort)(m + 1 + vm.Registers[vm.Memory[m]]);
+					},
+									(vm, m) =>
+					{
+						// Cmp_I8_I8
+						vm.FlagCompare = (sbyte)vm.Memory[m].CompareTo(vm.Memory[m + 1]); return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// Cmp_Reg_I8
+						vm.FlagCompare = (sbyte)vm.Registers[vm.Memory[m]].CompareTo(vm.Memory[m + 1]); return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// Cmp_Reg_Reg
+						vm.FlagCompare = (sbyte)vm.Registers[vm.Memory[m]].CompareTo(vm.Registers[vm.Memory[m + 1]]); return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// Jl_I8
+						return (ushort)(vm.FlagCompare < 0 ? vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jl_RI8
+						return (ushort)(vm.FlagCompare < 0 ? m + 1 + vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jl_Reg
+						return (ushort)(vm.FlagCompare < 0 ? vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jl_RReg
+						return (ushort)(vm.FlagCompare < 0 ? m + 1 + vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jle_I8
+						return (ushort)(vm.FlagCompare <= 0 ? vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jle_RI8
+						return (ushort)(vm.FlagCompare <= 0 ? m + 1 + vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jle_Reg
+						return (ushort)(vm.FlagCompare <= 0 ? vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jle_RReg
+						return (ushort)(vm.FlagCompare <= 0 ? m + 1 + vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jg_I8
+						return (ushort)(vm.FlagCompare > 0 ? vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jg_RI8
+						return (ushort)(vm.FlagCompare > 0 ? m + 1 + vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jg_Reg
+						return (ushort)(vm.FlagCompare > 0 ? vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jg_RReg
+						return (ushort)(vm.FlagCompare > 0 ? m + 1 + vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jge_I8
+						return (ushort)(vm.FlagCompare >= 0 ? vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jge_RI8
+						return (ushort)(vm.FlagCompare >= 0 ? m + 1 + vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jge_Reg
+						return (ushort)(vm.FlagCompare >= 0 ? vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jge_RReg
+						return (ushort)(vm.FlagCompare >= 0 ? m + 1 + vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Je_I8
+						return (ushort)(vm.FlagCompare == 0 ? vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Je_RI8
+						return (ushort)(vm.FlagCompare == 0 ? m + 1 + vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Je_Reg
+						return (ushort)(vm.FlagCompare == 0 ? vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Je_RReg
+						return (ushort)(vm.FlagCompare == 0 ? m + 1 + vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jne_I8
+						return (ushort)(vm.FlagCompare != 0 ? vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jne_RI8
+						return (ushort)(vm.FlagCompare != 0 ? m + 1 + vm.Memory[m] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jne_Reg
+						return (ushort)(vm.FlagCompare != 0 ? vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Jne_RReg
+						return (ushort)(vm.FlagCompare != 0 ? m + 1 + vm.Registers[vm.Memory[m]] : m + 1);
 					},
 							};
 
-		static readonly Dictionary<Instruction, Func<Memory<byte>, (string result, int size)>> InstructionDecompilation = 
-			new Dictionary<Instruction, Func<Memory<byte>, (string result, int size)>>()
-		{
-							[Instruction.Nop] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+		static readonly Func<Memory<byte>, (string result, int size)>[] InstructionDecompilation = 
+			new Func<Memory<byte>, (string result, int size)>[]
+			{
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 0 ? ($"NOP ", 1) : (null, 0);
-				},
-							[Instruction.Mov_Reg_I8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 0 ? ($"NOP ", 1) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-				},
-							[Instruction.Mov_Reg_Reg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-				},
-							[Instruction.Mov_Reg_PI8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
-				},
-							[Instruction.Mov_Reg_PReg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
-				},
-							[Instruction.Mov_PI8_I8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] 0x{s[1]:X2} ", 3) : (null, 0);
-				},
-							[Instruction.Mov_PI8_Reg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] r{s[1] & 0xF} ", 3) : (null, 0);
-				},
-							[Instruction.Mov_PI8_PI8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] r{s[1] & 0xF} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] [0x{s[1]:X2}] ", 3) : (null, 0);
-				},
-							[Instruction.Mov_PI8_PReg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] [0x{s[1]:X2}] ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] [r{s[1] & 0xF}] ", 3) : (null, 0);
-				},
-							[Instruction.Mov_PReg_I8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV [0x{s[0]:X2}] [r{s[1] & 0xF}] ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] 0x{s[1]:X2} ", 3) : (null, 0);
-				},
-							[Instruction.Mov_PReg_Reg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-				},
-							[Instruction.Mov_PReg_PI8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] [0x{s[1]:X2}] ", 3) : (null, 0);
-				},
-							[Instruction.Mov_PReg_PReg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] [0x{s[1]:X2}] ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
-				},
-							[Instruction.AddI_Reg_I8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MOV [r{s[0] & 0xF}] [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-				},
-							[Instruction.AddI_Reg_Reg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-				},
-							[Instruction.AddI_Reg_PI8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
-				},
-							[Instruction.AddI_Reg_PReg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
-				},
-							[Instruction.SubI_Reg_I8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-				},
-							[Instruction.SubI_Reg_Reg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-				},
-							[Instruction.SubI_Reg_PI8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
-				},
-							[Instruction.SubI_Reg_PReg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 1 ? ($"INT 0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
-				},
-							[Instruction.MulI_Reg_I8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 1 ? ($"INT r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-				},
-							[Instruction.MulI_Reg_Reg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-				},
-							[Instruction.MulI_Reg_PI8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
-				},
-							[Instruction.MulI_Reg_PReg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
-				},
-							[Instruction.Int_I8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 1 ? ($"INT 0x{s[0]:X2} ", 2) : (null, 0);
-				},
-							[Instruction.DivI_Reg_I8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 1 ? ($"JMP 0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-				},
-							[Instruction.DivI_Reg_Reg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 1 ? ($"JMP $+0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-				},
-							[Instruction.DivI_Reg_PI8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 1 ? ($"JMP r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
-				},
-							[Instruction.DivI_Reg_PReg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 1 ? ($"JMP $+r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
-				},
-							[Instruction.ModI_Reg_I8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"CMP 0x{s[0]:X2} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-				},
-							[Instruction.ModI_Reg_Reg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"CMP r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-				},
-							[Instruction.ModI_Reg_PI8] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 2 ? ($"CMP r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} [0x{s[1]:X2}] ", 3) : (null, 0);
-				},
-							[Instruction.ModI_Reg_PReg] = m =>
-				{
-					ReadOnlySpan<byte> s = m.Span;
+						
+						return s.Length >= 1 ? ($"JL 0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
 
-					
-					return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} [r{(s[0] & 0xF0) >> 4}] ", 2) : (null, 0);
-				},
-					};
+						
+						return s.Length >= 1 ? ($"JL $+0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JL r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JL $+r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JLE 0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JLE $+0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JLE r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JLE $+r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JG 0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JG $+0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JG r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JG $+r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JGE 0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JGE $+0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JGE r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JGE $+r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JE 0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JE $+0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JE r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JE $+r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JNE 0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JNE $+0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JNE r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"JNE $+r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+							};
 
 		public static string Disassemble(Memory<byte> m, out int size)
 		{
-            if (m.Length > 0 && InstructionDecompilation.TryGetValue((Instruction)m.Span[0], out var fn))
-            {
-                var (result, sz) = fn(m.Slice(1));
-                size = sz;
-                return result;
-            }
+			if (m.Length > 0)
+			{
+				var instr = m.Span[0];
+				if (instr < InstructionDecompilation.Length)
+				{
+					var (result, sz) = InstructionDecompilation[instr](m.Slice(1));
+					size = sz;
+					return result;
+				}
+			}
 
             size = 0;
             return null;
@@ -493,6 +802,8 @@ namespace Pengu.VirtualMachine
         {
 			ushort memidx = 0;
 			int i0, i1;
+
+			var labels = new Dictionary<string, ushort>();
 
             var reader = new StringReader(s);
             string line;
@@ -505,42 +816,70 @@ namespace Pengu.VirtualMachine
                 tokens.Clear();
                 for (int idx = 0; idx < line.Length && !char.IsWhiteSpace(line[idx]); ++idx)
                 {
+					while (idx < line.Length && char.IsWhiteSpace(line[idx])) 
+						++idx;
+
                     var start = idx;
-                    while (idx < line.Length && !char.IsWhiteSpace(line[idx]))
-                        ++idx;
+					if(idx < line.Length && line[idx] == '$')
+					{
+						++idx;																// $
+						while (idx < line.Length && char.IsWhiteSpace(line[idx]))			// spaces
+							++idx;
+						while (idx < line.Length && !char.IsWhiteSpace(line[idx]))			// +
+							++idx;					
+						while (idx < line.Length && char.IsWhiteSpace(line[idx]))			// spaces
+							++idx;
+						while (idx < line.Length && !char.IsWhiteSpace(line[idx]))			// value
+							++idx;					
+					}
+					else
+						while (idx < line.Length && !char.IsWhiteSpace(line[idx]))
+							++idx;
                     tokens.Add(line[start..idx]);
                 }
 
 				if(!tokens.Any()) continue;
 
-				static int GetNumber(string n) => n.StartsWith("0x") ? Convert.ToInt32(n, 16) : int.Parse(n);
-				static bool IsReg(string s, out int r) 
+				int GetNumber(string n) => n.StartsWith("0x") ? Convert.ToInt32(n, 16) : n[0] == '.' ? labels[n[1..]] : int.Parse(n);
+				bool IsReg(string s, out int r) 
 				{ 
 					var m = Regex.Match(s, @"^r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
-				static bool IsI8(string s, out int r) 
+				bool IsI8(string s, out int r) 
 				{ 
-					var m = Regex.Match(s, @"^(\d+|0x[\dA-Fa-f]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^(\d+|0x[\dA-Fa-f]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
-				static bool IsPReg(string s, out int r) 
+				bool IsPReg(string s, out int r) 
 				{ 
 					var m = Regex.Match(s, @"^\[r(\d+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
-				static bool IsPI8(string s, out int r) 
+				bool IsPI8(string s, out int r) 
 				{ 
-					var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+|\.\w+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
-				static bool IsAtAddress(string s, out int r)
+				bool IsRReg(string s, out int r)
+				{
+					var m = Regex.Match(s, @"^\$\s*\+\s*r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+					return m.Success; 
+				}
+				bool IsRI8(string s, out int r)
+				{
+					var m = Regex.Match(s, @"^\$\s*\+\s*(\d+|0x[\dA-Fa-f]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+					return m.Success; 
+				}
+				bool IsAtAddress(string s, out int r)
 				{ 
-					var m = Regex.Match(s, @"^@(\d+|0x[\dA-Fa-f]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^@(\d+|0x[\dA-Fa-f]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
@@ -549,6 +888,12 @@ namespace Pengu.VirtualMachine
                 {
                     // @addr
                     memidx = (ushort)i0;
+                    continue;
+                }
+
+                if (tokens.Count == 1 && tokens[0].FirstOrDefault() == '.')
+                {
+                    labels.Add(tokens[0][1..], memidx);
                     continue;
                 }
 
@@ -561,7 +906,17 @@ namespace Pengu.VirtualMachine
 
 				if(tokens.Count == 1 && tokens[0].Equals("ORG", StringComparison.OrdinalIgnoreCase))
 				{
-                    MemoryMarshal.Write(vm.Memory.AsSpan(^2..), ref memidx);
+					switch(vm.Type)
+					{
+						case VMType.BitLength8:
+							vm.Memory[^1] = (byte)memidx;
+							break;
+						case VMType.BitLength16:
+							MemoryMarshal.Write(vm.Memory.AsSpan(^2..), ref memidx);
+							break;
+						default:
+							throw new InvalidOperationException($"Invalid VM type enountered: {vm.Type}.");
+					}
 					continue;
 				}
 
@@ -686,21 +1041,6 @@ namespace Pengu.VirtualMachine
 																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
 																						continue;
 						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.AddI_Reg_PI8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.AddI_Reg_PReg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
 											}
 									if(tokens[0].Equals("SubI", StringComparison.OrdinalIgnoreCase))
 					{
@@ -716,21 +1056,6 @@ namespace Pengu.VirtualMachine
 							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
 						{
 							vm.Memory[memidx++] = (byte)Instruction.SubI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.SubI_Reg_PI8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.SubI_Reg_PReg;
 																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
 																						continue;
 						}
@@ -752,21 +1077,6 @@ namespace Pengu.VirtualMachine
 																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
 																						continue;
 						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.MulI_Reg_PI8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.MulI_Reg_PReg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
 											}
 									if(tokens[0].Equals("Int", StringComparison.OrdinalIgnoreCase))
 					{
@@ -774,6 +1084,13 @@ namespace Pengu.VirtualMachine
 							 && IsI8(tokens[1], out i0) )
 						{
 							vm.Memory[memidx++] = (byte)Instruction.Int_I8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Int_Reg;
 															vm.Memory[memidx++] = (byte)i0;
 														continue;
 						}
@@ -795,21 +1112,6 @@ namespace Pengu.VirtualMachine
 																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
 																						continue;
 						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.DivI_Reg_PI8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.DivI_Reg_PReg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
 											}
 									if(tokens[0].Equals("ModI", StringComparison.OrdinalIgnoreCase))
 					{
@@ -828,20 +1130,248 @@ namespace Pengu.VirtualMachine
 																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
 																						continue;
 						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
+											}
+									if(tokens[0].Equals("Jmp", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsI8(tokens[1], out i0) )
 						{
-							vm.Memory[memidx++] = (byte)Instruction.ModI_Reg_PI8;
+							vm.Memory[memidx++] = (byte)Instruction.Jmp_I8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jmp_RI8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jmp_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jmp_RReg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
+									if(tokens[0].Equals("Cmp", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsI8(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Cmp_I8_I8;
 																								vm.Memory[memidx++] = (byte)i0;
 									vm.Memory[memidx++] = (byte)i1;
 																						continue;
 						}
 												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
 						{
-							vm.Memory[memidx++] = (byte)Instruction.ModI_Reg_PReg;
+							vm.Memory[memidx++] = (byte)Instruction.Cmp_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Cmp_Reg_Reg;
 																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
 																						continue;
+						}
+											}
+									if(tokens[0].Equals("Jl", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jl_I8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jl_RI8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jl_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jl_RReg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
+									if(tokens[0].Equals("Jle", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jle_I8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jle_RI8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jle_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jle_RReg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
+									if(tokens[0].Equals("Jg", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jg_I8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jg_RI8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jg_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jg_RReg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
+									if(tokens[0].Equals("Jge", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jge_I8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jge_RI8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jge_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jge_RReg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
+									if(tokens[0].Equals("Je", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Je_I8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Je_RI8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Je_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Je_RReg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
+									if(tokens[0].Equals("Jne", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jne_I8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jne_RI8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jne_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Jne_RReg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
 						}
 											}
 				

@@ -12,15 +12,18 @@ namespace Pengu.Renderer
         {
             readonly VM vm;
 
-            const int editorLineBytes = 0x10;
+            const int editorLineBytes = 0x20;
             const int addressSizeBytes = 2;
             const int linesCount = 15;
 
             int selectedHalfByte;
 
+            bool done, running;
+
             public HexEditorWindow(VulkanContext context, GameSurface surface, VM vm) : base(context, surface)
             {
                 this.vm = vm;
+                vm.RegisterInterrupt(0, _ => { done = true; running = false; });
 
                 fontString = context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -0.9f), 0.055f);
                 FillFontString();
@@ -44,6 +47,26 @@ namespace Pengu.Renderer
                 var leftAddress0 = (3 + line) * frameLength + 2;
                 var value0 = leftAddress0 + 4 + 3 + 3 * (halfIndexInLine / 2) + halfIndexInLine % 2;
 
+                var ipLine = Math.DivRem(vm.InstructionPointer, editorLineBytes, out var ipIndexInLine);
+                var disasmNext = InstructionSet.Disassemble(vm.Memory.AsMemory(vm.InstructionPointer), out var instructionByteSize);
+                var ip0 = (3 + ipLine) * frameLength + 4 + 5 + 3 * ipIndexInLine;
+
+                var valOverride = (value0, 1, FontColor.Black, FontColor.BrightCyan, true);
+                var ipOverride = (ip0, 3 * instructionByteSize, done ? FontColor.DarkGreen : FontColor.DarkRed, done ? FontColor.Black : FontColor.White, false);
+                var overrides = new[]
+                    {
+                        (1 + frameForAddress.Length + 1 + titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2, title.Length + 2, FontColor.White, FontColor.Black, false),
+                        (headerAddress0, 2, FontColor.Black, FontColor.BrightCyan, true),
+                        (leftAddress0, 4, FontColor.Black, FontColor.BrightCyan, true),
+                        value0 < ip0 ? valOverride : ipOverride,
+                        value0 >= ip0 ? valOverride : ipOverride,
+                    };
+
+                var regFlags = string.Concat(vm.Registers.Select((val, idx) => $"R{idx}: 0x{val:X2} ")) +
+                    $"SR: 0x{vm.StackRegister:X2} IP: 0x{vm.InstructionPointer:X2} F: {(vm.FlagCompare < 0 ? "-" : vm.FlagCompare == 0 ? "0" : "+")} ";
+                var statusLine = " NEXT ASM: " + disasmNext.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7 - regFlags.Length) + regFlags;
+
+                var disasmSelected = InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---";
                 fontString.Set(
                     "╔" + frameForAddress + "╤" + new string('═', titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2) + " " + title + " " + new string('═', titleHalfOffset) + "╗\n" +
                     "║" + new string(' ', addressSizeBytes * 2 + 2) + "│" + string.Concat(Enumerable.Range(0, editorLineBytes).Select(idx => $" {idx:X2}")) + " ║\n" +
@@ -51,15 +74,10 @@ namespace Pengu.Renderer
                     string.Concat(Enumerable.Range(0, linesCount).Select(lineIdx =>
                         $"║ {lineIdx * editorLineBytes:X4} │ {string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => TryGetHexAt(vm.Memory, lineIdx * editorLineBytes + idx)))} ║\n")) +
                     "╟" + new string('─', addressSizeBytes * 2 + 2) + "┴" + new string('─', editorLineBytes * 3 + 1) + "╢\n" +
-                    "║ ASM: " + (InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---").PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 2) + "║\n" +
+                    "║" + statusLine + "║\n" +
+                    "║ SEL  ASM: " + disasmSelected.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7) + "║\n" +
                     "╚" + new string('═', addressSizeBytes * 2 + 2 + 1 + editorLineBytes * 3 + 1) + "╝",
-                    FontColor.Black, FontColor.BrightGreen, surface.CharacterToScreenSize(positionX, positionY, fontString), new[]
-                    {
-                        (1 + frameForAddress.Length + 1 + titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2, title.Length + 2, FontColor.White, FontColor.Black, false),
-                        (headerAddress0, 2, FontColor.Black, FontColor.BrightCyan, true),
-                        (leftAddress0, 4, FontColor.Black, FontColor.BrightCyan, true),
-                        (value0, 1, FontColor.Black, FontColor.BrightCyan, true),
-                    });
+                    FontColor.Black, FontColor.BrightGreen, surface.CharacterToScreenSize(positionX, positionY, fontString), overrides);
             }
 
             public override bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers)
@@ -96,10 +114,43 @@ namespace Pengu.Renderer
                 if (key >= Keys.Alpha0 && key <= Keys.Alpha9 && action != InputState.Release) { UpdateHalfByteWithNumber(key - Keys.Alpha0); return true; }
                 if (key >= Keys.A && key <= Keys.F && action != InputState.Release) { UpdateHalfByteWithNumber(key - Keys.A + 10); return true; }
 
+                if (key == Keys.F11 && action != InputState.Release && !done && !running)
+                {
+                    vm.RunNextInstruction();
+                    fontStringDirty = true;
+                }
+                if (key == Keys.F5 && modifiers == 0 && action == InputState.Press && !done && !running)
+                    running = true;
+                if (key == Keys.F5 && modifiers.HasFlag(ModifierKeys.Shift) && action == InputState.Press && !done && running)
+                    running = false;
+                if (key == Keys.R && action == InputState.Press && !running)
+                {
+                    vm.Reset();
+                    done = false;
+                    fontStringDirty = true;
+                }
+
                 return false;
             }
 
-            public override void UpdateLogic(TimeSpan elapsedTime) { }
+            TimeSpan partialElapsedTime;
+            const double InstructionRunFrequencyMSec = 1000.0 / 60.0;
+            public override void UpdateLogic(TimeSpan elapsedTime)
+            {
+                if (!running) return;
+
+                // execute 1 instruction per frame at 60 fps
+                var totalTime = elapsedTime + partialElapsedTime;
+                var cycles = (int)(totalTime.TotalMilliseconds / InstructionRunFrequencyMSec);
+                if (cycles > 0)
+                {
+                    vm.RunNextInstruction(cycles);
+                    fontStringDirty = true;
+                    partialElapsedTime = TimeSpan.FromTicks((long)(totalTime.TotalMilliseconds - cycles * InstructionRunFrequencyMSec * TimeSpan.TicksPerMillisecond));
+                }
+                else
+                    partialElapsedTime += elapsedTime;
+            }
         }
     }
 }

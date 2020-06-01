@@ -53,8 +53,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="deps\glfw3.dll">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    <None Update="deps\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Media\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -89,9 +89,5 @@
       <HintPath>deps\GLFW.NET.dll</HintPath>
     </Reference>
   </ItemGroup>
-
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy /y deps\* &quot;$(TargetDir)&quot;" />
-  </Target>
 
 </Project>

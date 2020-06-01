@@ -1,8 +1,9 @@
-﻿| instruction         | bytes                 |
-|---------------------|-----------------------|
-| ORG                 | -                     |
-| @addr               | -                     |
-| DB I8               | i8                    |
+﻿| instruction         | bytes                 | description
+|---------------------|-----------------------|--------------
+| ORG                 | -                     | sets the starting point of the program (last 1-2 bytes)
+| @addr               | -                     | continues the assembly at the given address
+| .label              | -                     | marks the current assembly address with a label
+| DB I8               | i8                    | writes the byte at the current assembly address
 | NOP                 | 00                    |
 | MOV REG, I8         | 01 reg i8             |
 | MOV REG, REG        | 02 reg:4\|reg:4       |
@@ -32,9 +33,9 @@
 | JMP $ + I8          | 1a i8                 |
 | JMP REG             | 1b i8                 |
 | JMP $ + REG         | 1c i8                 |
-| CMP I8, I8          | 1d i8 i8              |
-| CMP REG, I8         | 1e reg i8             |
-| CMP REG, REG        | 1f reg:4|reg:4        |
+| CMP I8, I8          | 1d i8 i8              | sets the compare flag to -1 / 0 / 1
+| CMP REG, I8         | 1e reg i8             | sets the compare flag to -1 / 0 / 1
+| CMP REG, REG        | 1f reg:4\|reg:4       | sets the compare flag to -1 / 0 / 1
 | JL I8               | 20 i8                 |
 | JL $ + I8           | 21 i8                 |
 | JL REG              | 22 reg                |

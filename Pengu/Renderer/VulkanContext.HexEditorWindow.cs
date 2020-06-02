@@ -134,12 +134,12 @@ namespace Pengu.Renderer
             }
 
             TimeSpan partialElapsedTime;
-            const double InstructionRunFrequencyMSec = 1000.0 / 60.0;
+            const double InstructionRunFrequencyMSec = 1000.0 / 120.0;
             public override void UpdateLogic(TimeSpan elapsedTime)
             {
                 if (!running) return;
 
-                // execute 1 instruction per frame at 60 fps
+                // execute 1 instruction per frame at {InstructionRunFrequencyMSec} fps
                 var totalTime = elapsedTime + partialElapsedTime;
                 var cycles = (int)(totalTime.TotalMilliseconds / InstructionRunFrequencyMSec);
                 if (cycles > 0)

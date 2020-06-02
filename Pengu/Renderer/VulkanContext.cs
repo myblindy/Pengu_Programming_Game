@@ -164,13 +164,12 @@ namespace Pengu.Renderer
                 var availableLayers = Instance.EnumerateLayerProperties();
                 if (availableLayers.Any(w => w.LayerName == StandardValidationLayerName))
                     enabledLayers = new[] { StandardValidationLayerName };
-
                 enabledExtensions = Vulkan.GetRequiredInstanceExtensions().Append(ExtExtensions.DebugReport).ToArray();
             }
             else
             {
                 enabledLayers = Array.Empty<string>();
-                enabledExtensions = Vulkan.GetRequiredInstanceExtensions().ToArray();
+                enabledExtensions = Vulkan.GetRequiredInstanceExtensions();
             }
 
             instance = Instance.Create(enabledLayers, enabledExtensions,
@@ -180,7 +179,7 @@ namespace Pengu.Renderer
                     ApplicationVersion = new Version(1, 0, 0),
                     EngineName = "SharpVk",
                     EngineVersion = new Version(1, 0, 0),
-                    ApiVersion = new Version(1, 1, 0)
+                    ApiVersion = new Version(1, 1, 0), 
                 });
 
             // debug layer

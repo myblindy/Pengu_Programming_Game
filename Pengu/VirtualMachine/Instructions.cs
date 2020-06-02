@@ -67,6 +67,14 @@ namespace Pengu.VirtualMachine
 					Jne_RI8, 
 					Jne_Reg, 
 					Jne_RReg, 
+					Push_I8, 
+					Push_Reg, 
+					Pop_Reg, 
+					Call_I8, 
+					Call_RI8, 
+					Call_Reg, 
+					Call_RReg, 
+					Ret, 
 			}
 
 	[System.CodeDom.Compiler.GeneratedCode("Instructions.tt", null)]
@@ -381,6 +389,70 @@ namespace Pengu.VirtualMachine
 					{
 						// Jne_RReg
 						return (ushort)(vm.FlagCompare != 0 ? m + 1 + vm.Registers[vm.Memory[m]] : m + 1);
+					},
+									(vm, m) =>
+					{
+						// Push_I8
+						
+					switch(vm.Type)
+					{
+						case VMType.BitLength8:
+							vm.Memory[vm.StackRegister--] = vm.Memory[m];
+							break;
+						default: throw new InvalidOperationException($"Unexpected VM type enountered: {vm.Type}.");
+					}
+					return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// Push_Reg
+						
+				switch(vm.Type)
+				{
+					case VMType.BitLength8:
+						vm.Memory[vm.StackRegister--] = (byte)vm.Registers[vm.Memory[m]];
+						break;
+					default: throw new InvalidOperationException($"Unexpected VM type enountered: {vm.Type}.");
+				}
+				return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// Pop_Reg
+						
+				switch(vm.Type)
+				{
+					case VMType.BitLength8:
+						vm.Registers[vm.Memory[m]] = vm.Memory[++vm.StackRegister];
+						break;
+					default: throw new InvalidOperationException($"Unexpected VM type enountered: {vm.Type}.");
+				}
+				return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// Call_I8
+						vm.Memory[vm.StackRegister--] = (byte)(m + 1); return vm.Memory[m];
+					},
+									(vm, m) =>
+					{
+						// Call_RI8
+						vm.Memory[vm.StackRegister--] = (byte)(m + 1); return (ushort)(m + 1 + vm.Memory[m]);
+					},
+									(vm, m) =>
+					{
+						// Call_Reg
+						vm.Memory[vm.StackRegister--] = (byte)(m + 1); return (ushort)(vm.Registers[vm.Memory[m]]);
+					},
+									(vm, m) =>
+					{
+						// Call_RReg
+						vm.Memory[vm.StackRegister--] = (byte)(m + 1); return (ushort)(m + 1 + vm.Registers[vm.Memory[m]]);
+					},
+									(vm, m) =>
+					{
+						// Ret
+						return vm.Memory[++vm.StackRegister];
 					},
 							};
 
@@ -779,6 +851,62 @@ namespace Pengu.VirtualMachine
 						
 						return s.Length >= 1 ? ($"JNE $+r{s[0] & 0xF} ", 2) : (null, 0);
 					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"PUSH 0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"PUSH r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"POP r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"CALL 0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"CALL $+0x{s[0]:X2} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"CALL r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"CALL $+r{s[0] & 0xF} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 0 ? ($"RET ", 1) : (null, 0);
+					},
 							};
 
 		public static string Disassemble(Memory<byte> m, out int size)
@@ -861,7 +989,7 @@ namespace Pengu.VirtualMachine
 				}
 				bool IsPI8(string s, out int r) 
 				{ 
-					var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+|\.\w+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
@@ -873,13 +1001,13 @@ namespace Pengu.VirtualMachine
 				}
 				bool IsRI8(string s, out int r)
 				{
-					var m = Regex.Match(s, @"^\$\s*\+\s*(\d+|0x[\dA-Fa-f]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^\$\s*\+\s*(\d+|0x[\dA-Fa-f]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
 				bool IsAtAddress(string s, out int r)
 				{ 
-					var m = Regex.Match(s, @"^@(\d+|0x[\dA-Fa-f]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^@(\d+|0x[\dA-Fa-f]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
@@ -1371,6 +1499,73 @@ namespace Pengu.VirtualMachine
 						{
 							vm.Memory[memidx++] = (byte)Instruction.Jne_RReg;
 															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
+									if(tokens[0].Equals("Push", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Push_I8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Push_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
+									if(tokens[0].Equals("Pop", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Pop_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
+									if(tokens[0].Equals("Call", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Call_I8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRI8(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Call_RI8;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Call_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+												if(tokens.Count == 2
+							 && IsRReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Call_RReg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
+									if(tokens[0].Equals("Ret", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 1
+							)
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Ret;
 														continue;
 						}
 											}

@@ -16,7 +16,7 @@ namespace Pengu
             const bool debug = false;
 #endif
 
-            var vm = new VM(VMType.BitLength8, registers: 1, memory: 30);
+            var vm = new VM(VMType.BitLength8, registers: 1, memory: 60);
 
             InstructionSet.Assemble(@"
 @1
@@ -27,12 +27,13 @@ org
 mov r0 0
 
 .loop1
+push r0
 addi r0 1
 cmp r0 10
 jl .loop1
 
 .loop2
-subi r0 1
+pop r0
 cmp r0 0
 jg .loop2
 

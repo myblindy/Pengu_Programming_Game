@@ -77,6 +77,42 @@
 			($"J{name}_Reg", $@"return (ushort)(vm.FlagCompare {op} 0 ? vm.Registers[vm.Memory[m]] : m + 1);"),
 			($"J{name}_RReg", $@"return (ushort)(vm.FlagCompare {op} 0 ? m + 1 + vm.Registers[vm.Memory[m]] : m + 1);"),
 		});
+
+	foreach(var name in new[] { "Push", "Pop" })
+	{
+		if(name == "Push")
+			instructions.Add(
+				($"{name}_I8", $@"
+					switch(vm.Type)
+					{{
+						case VMType.BitLength8:
+							vm.Memory[vm.StackRegister--] = vm.Memory[m];
+							break;
+						default: throw new InvalidOperationException($""Unexpected VM type enountered: {{vm.Type}}."");
+					}}
+					return (ushort)(m + 1);"));
+		instructions.Add(
+			($"{name}_Reg", $@"
+				switch(vm.Type)
+				{{
+					case VMType.BitLength8:
+						{(name == "Push" 
+							? "vm.Memory[vm.StackRegister--] = (byte)vm.Registers[vm.Memory[m]];"
+							: "vm.Registers[vm.Memory[m]] = vm.Memory[++vm.StackRegister];" )}
+						break;
+					default: throw new InvalidOperationException($""Unexpected VM type enountered: {{vm.Type}}."");
+				}}
+				return (ushort)(m + 1);"));
+	}
+
+	instructions.AddRange(new[]
+	{
+		("Call_I8", @"vm.Memory[vm.StackRegister--] = (byte)(m + 1); return vm.Memory[m];"),
+		("Call_RI8", @"vm.Memory[vm.StackRegister--] = (byte)(m + 1); return (ushort)(m + 1 + vm.Memory[m]);"),
+		("Call_Reg", @"vm.Memory[vm.StackRegister--] = (byte)(m + 1); return (ushort)(vm.Registers[vm.Memory[m]]);"),
+		("Call_RReg", @"vm.Memory[vm.StackRegister--] = (byte)(m + 1); return (ushort)(m + 1 + vm.Registers[vm.Memory[m]]);"),
+		("Ret", @"return vm.Memory[++vm.StackRegister];"),
+	});
 #>
 
 using System;

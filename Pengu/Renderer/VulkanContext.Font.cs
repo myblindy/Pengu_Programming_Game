@@ -254,76 +254,73 @@ namespace Pengu.Renderer
                         CreateVertexIndexBuffers();
                     }
 
-                    unsafe
-                    {
-                        // build the string vertices
-                        var vertexPtr = (FontVertex*)stagingIndexVertexBufferMemoryStartPtr.ToPointer();
-                        ushort vertexIdx = 0;
-                        var indexPtr = (ushort*)(vertexPtr + UsedVertices);
+                    // build the string vertices
+                    var vertexPtr = (FontVertex*)stagingIndexVertexBufferMemoryStartPtr.ToPointer();
+                    ushort vertexIdx = 0;
+                    var indexPtr = (ushort*)(vertexPtr + UsedVertices);
 
-                        foreach (var fs in fontStrings)
-                            if (!string.IsNullOrWhiteSpace(fs.Value))
+                    foreach (var fs in fontStrings)
+                        if (!string.IsNullOrWhiteSpace(fs.Value))
+                        {
+                            var x = fs.Position.X;
+                            var y = fs.Position.Y;
+                            int charIndex = 0;
+
+                            foreach (var ch in fs.Value)
                             {
-                                var x = fs.Position.X;
-                                var y = fs.Position.Y;
-                                int charIndex = 0;
-
-                                foreach (var ch in fs.Value)
+                                if (ch == '\n')
                                 {
-                                    if (ch == '\n')
-                                    {
-                                        x = fs.Position.X;
-                                        y += fs.Size;
-                                    }
-                                    else if (ch == ' ')
-                                    {
-                                        var (u0, v0, u1, v1) = Characters[' '];
-                                        x += fs.Size * (u1 - u0) / (v1 - v0);
-                                    }
-                                    else
-                                    {
-                                        var (u0, v0, u1, v1) = Characters[ch == ' ' ? ' ' : ch];
-                                        var aspect = (u1 - u0) / (v1 - v0);
-                                        var xSize = fs.Size * aspect;
-
-                                        var @override = fs.TryGetOverrideForIndex(charIndex);
-
-                                        var bg = FontColor.Black;
-                                        var fg = FontColor.BrightGreen;
-                                        var selected = false;
-
-                                        if (@override.HasValue)
-                                            (bg, fg, selected) = (@override.Value.bg, @override.Value.fg, @override.Value.selected);
-
-                                        *vertexPtr++ = new FontVertex(
-                                            new Vector4(x / context.extent.AspectRatio, y, u0, v0), bg, fg, selected, fs.Offset);
-                                        *vertexPtr++ = new FontVertex(
-                                            new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), bg, fg, selected, fs.Offset);
-                                        *vertexPtr++ = new FontVertex(
-                                            new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), bg, fg, selected, fs.Offset);
-                                        *vertexPtr++ = new FontVertex(
-                                            new Vector4((x + xSize) / context.extent.AspectRatio, y + fs.Size, u1, v1), bg, fg, selected, fs.Offset);
-
-                                        *indexPtr++ = (ushort)(vertexIdx + 0);
-                                        *indexPtr++ = (ushort)(vertexIdx + 1);
-                                        *indexPtr++ = (ushort)(vertexIdx + 2);
-
-                                        *indexPtr++ = (ushort)(vertexIdx + 2);
-                                        *indexPtr++ = (ushort)(vertexIdx + 1);
-                                        *indexPtr++ = (ushort)(vertexIdx + 3);
-
-                                        vertexIdx += 4;
-
-                                        x += xSize;
-                                    }
-
-                                    ++charIndex;
+                                    x = fs.Position.X;
+                                    y += fs.Size;
                                 }
+                                else if (ch == ' ')
+                                {
+                                    var (u0, v0, u1, v1) = Characters[' '];
+                                    x += fs.Size * (u1 - u0) / (v1 - v0);
+                                }
+                                else
+                                {
+                                    var (u0, v0, u1, v1) = Characters[ch == ' ' ? ' ' : ch];
+                                    var aspect = (u1 - u0) / (v1 - v0);
+                                    var xSize = fs.Size * aspect;
+
+                                    var @override = fs.TryGetOverrideForIndex(charIndex);
+
+                                    var bg = FontColor.Black;
+                                    var fg = FontColor.BrightGreen;
+                                    var selected = false;
+
+                                    if (@override.HasValue)
+                                        (bg, fg, selected) = (@override.Value.bg, @override.Value.fg, @override.Value.selected);
+
+                                    *vertexPtr++ = new FontVertex(
+                                        new Vector4(x / context.extent.AspectRatio, y, u0, v0), bg, fg, selected, fs.Offset);
+                                    *vertexPtr++ = new FontVertex(
+                                        new Vector4(x / context.extent.AspectRatio, y + fs.Size, u0, v1), bg, fg, selected, fs.Offset);
+                                    *vertexPtr++ = new FontVertex(
+                                        new Vector4((x + xSize) / context.extent.AspectRatio, y, u1, v0), bg, fg, selected, fs.Offset);
+                                    *vertexPtr++ = new FontVertex(
+                                        new Vector4((x + xSize) / context.extent.AspectRatio, y + fs.Size, u1, v1), bg, fg, selected, fs.Offset);
+
+                                    *indexPtr++ = (ushort)(vertexIdx + 0);
+                                    *indexPtr++ = (ushort)(vertexIdx + 1);
+                                    *indexPtr++ = (ushort)(vertexIdx + 2);
+
+                                    *indexPtr++ = (ushort)(vertexIdx + 2);
+                                    *indexPtr++ = (ushort)(vertexIdx + 1);
+                                    *indexPtr++ = (ushort)(vertexIdx + 3);
+
+                                    vertexIdx += 4;
+
+                                    x += xSize;
+                                }
+
+                                ++charIndex;
                             }
-                    }
+                        }
 
                     resultCommandBuffer = context.CopyBuffer(stagingVertexIndexBuffer, vertexIndexBuffer,
-                        UsedVertices * (FontVertex.Size + sizeof(ushort)));
+                        UsedVertices * FontVertex.Size + UsedIndices * sizeof(ushort));
 
                     IsBufferDataDirty = false;
                 }

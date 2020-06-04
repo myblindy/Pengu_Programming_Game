@@ -429,7 +429,7 @@ namespace Pengu.Renderer
                         ImageExtent = new Extent3D(width, height, 1),
                     }));
 
-        Image CreateTextureImage(string fn, uint queueFamilyIndex, out Format format, out DeviceMemory imageMemory)
+        Image CreateTextureImage(string fn, out Format format, out DeviceMemory imageMemory)
         {
             Buffer stagingBuffer = default;
             DeviceMemory stagingBufferMemory = default;
@@ -454,7 +454,7 @@ namespace Pengu.Renderer
                 format = Format.B8G8R8A8Srgb;
                 var image = device.CreateImage(ImageType.Image2d, format, new Extent3D((uint)width, (uint)height, 1), 1, 1,
                     SampleCountFlags.SampleCount1, ImageTiling.Optimal, ImageUsageFlags.Sampled | ImageUsageFlags.TransferDestination,
-                    SharingMode.Exclusive, queueFamilyIndex, ImageLayout.Undefined);
+                    SharingMode.Exclusive, queueIndices.TransferFamily, ImageLayout.Undefined);
 
                 // allocate memory for the image 
                 var memoryRequirements = image.GetMemoryRequirements();
@@ -462,9 +462,18 @@ namespace Pengu.Renderer
                 image.BindMemory(imageMemory, 0);
 
                 // transition into a transfer destination, copy the buffer data, and then transition to shader readonly
-                TransitionImageLayout(image, ImageLayout.Undefined, ImageLayout.TransferDestinationOptimal);
-                CopyBufferToImage2D(stagingBuffer, image, (uint)width, (uint)height);
-                TransitionImageLayout(image, ImageLayout.TransferDestinationOptimal, ImageLayout.ShaderReadOnlyOptimal);
+
+
+                transferQueue.Submit(new SubmitInfo
+                {
+                    CommandBuffers = new[]
+                    {
+                        TransitionImageLayout(image, ImageLayout.Undefined, ImageLayout.TransferDestinationOptimal),
+                        CopyBufferToImage2D(stagingBuffer, image, (uint)width, (uint)height),
+                        TransitionImageLayout(image, ImageLayout.TransferDestinationOptimal, ImageLayout.ShaderReadOnlyOptimal),
+                    }
+                }, null);
+                transferQueue.WaitIdle();
 
                 return image;
             }

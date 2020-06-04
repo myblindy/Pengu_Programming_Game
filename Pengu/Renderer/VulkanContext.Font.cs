@@ -91,7 +91,7 @@ namespace Pengu.Renderer
                 }
 
                 // build the font texture objects
-                fontTextureImage = context.CreateTextureImage("pt_mono.png", context.queueIndices.TransferFamily.Value, out var format, out fontTextureImageMemory);
+                fontTextureImage = context.CreateTextureImage("pt_mono.png", out var format, out fontTextureImageMemory);
                 fontTextureImageView = context.device.CreateImageView(fontTextureImage, ImageViewType.ImageView2d, format, ComponentMapping.Identity,
                     new ImageSubresourceRange { AspectMask = ImageAspectFlags.Color, LayerCount = 1, LevelCount = 1 });
 
@@ -259,7 +259,7 @@ namespace Pengu.Renderer
                         // build the string vertices
                         var vertexPtr = (FontVertex*)stagingIndexVertexBufferMemoryStartPtr.ToPointer();
                         ushort vertexIdx = 0;
-                        var indexPtr = (ushort*)(vertexPtr + UsedCharacters * FontVertex.Size);
+                        var indexPtr = (ushort*)(vertexPtr + UsedVertices);
 
                         foreach (var fs in fontStrings)
                             if (!string.IsNullOrWhiteSpace(fs.Value))
@@ -322,7 +322,8 @@ namespace Pengu.Renderer
                             }
                     }
 
-                    resultCommandBuffer = context.CopyBuffer(stagingVertexIndexBuffer, vertexIndexBuffer, UsedVertices * (FontVertex.Size + sizeof(ushort)));
+                    resultCommandBuffer = context.CopyBuffer(stagingVertexIndexBuffer, vertexIndexBuffer,
+                        UsedVertices * (FontVertex.Size + sizeof(ushort)));
 
                     IsBufferDataDirty = false;
                 }

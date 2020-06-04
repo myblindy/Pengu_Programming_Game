@@ -16,12 +16,13 @@ using Buffer = SharpVk.Buffer;
 using MoreLinq;
 using SixLabors.ImageSharp;
 using SharpVk.Interop.Khronos;
+using System.Net.NetworkInformation;
 
 namespace Pengu.Renderer
 {
     partial class VulkanContext
     {
-        class Font : IRenderableModule, IDisposable
+        unsafe class Font : IRenderableModule, IDisposable
         {
             readonly VulkanContext context;
             private readonly Dictionary<char, (float u0, float v0, float u1, float v1)> Characters =
@@ -29,15 +30,22 @@ namespace Pengu.Renderer
 
             private TimeSpan totalElapsedTime;
 
-            Buffer vertexBuffer, stagingVertexBuffer, indexBuffer, stagingIndexBuffer;
-            DeviceMemory vertexBufferMemory, stagingVertexBufferMemory, indexBufferMemory, stagingIndexBufferMemory;
+            Buffer vertexIndexBuffer, stagingVertexIndexBuffer;
+            DeviceMemory vertexIndexBufferMemory, stagingIndexVertexBufferMemory;
+            IntPtr stagingIndexVertexBufferMemoryStartPtr;
 
-            Buffer[] uniformBuffers;
-            DeviceMemory[] uniformBufferMemories;
+            struct PerImageResourcesType
+            {
+                public Buffer uniformBuffer;
+                public DeviceMemory uniformBufferMemory;
+                public IntPtr uniformBufferMemoryStartPtr;
+                public DescriptorSet descriptorSet;
+            }
+
+            PerImageResourcesType[] perImageResources;
 
             PipelineLayout pipelineLayout;
             DescriptorSetLayout descriptorSetLayout;
-            DescriptorSet[] descriptorSets;
             Pipeline pipeline;
             Image fontTextureImage;
             DeviceMemory fontTextureImageMemory;
@@ -73,11 +81,14 @@ namespace Pengu.Renderer
 
                 CreateVertexIndexBuffers();
 
-                uniformBuffers = new Buffer[context.swapChainImages.Length];
-                uniformBufferMemories = new DeviceMemory[context.swapChainImages.Length];
+                perImageResources = new PerImageResourcesType[context.swapChainImages.Length];
+
                 for (int idx = 0; idx < context.swapChainImages.Length; ++idx)
-                    uniformBuffers[idx] = context.CreateBuffer(FontUniformObject.Size, BufferUsageFlags.UniformBuffer,
-                        MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out uniformBufferMemories[idx]);
+                {
+                    perImageResources[idx].uniformBuffer = context.CreateBuffer(FontUniformObject.Size, BufferUsageFlags.UniformBuffer,
+                        MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out perImageResources[idx].uniformBufferMemory);
+                    perImageResources[idx].uniformBufferMemoryStartPtr = perImageResources[idx].uniformBufferMemory.Map(0, FontUniformObject.Size);
+                }
 
                 // build the font texture objects
                 fontTextureImage = context.CreateTextureImage("pt_mono.png", context.queueIndices.TransferFamily.Value, out var format, out fontTextureImageMemory);
@@ -124,7 +135,8 @@ namespace Pengu.Renderer
                         }
                     });
 
-                descriptorSets = context.device.AllocateDescriptorSets(descriptorPool, Enumerable.Repeat(descriptorSetLayout, context.swapChainImages.Length).ToArray());
+                context.device.AllocateDescriptorSets(descriptorPool, Enumerable.Repeat(descriptorSetLayout, context.swapChainImages.Length).ToArray())
+                    .ForEach((ds, idx) => perImageResources[idx].descriptorSet = ds);
 
                 for (int idx = 0; idx < context.swapChainImages.Length; ++idx)
                     context.device.UpdateDescriptorSets(
@@ -132,7 +144,7 @@ namespace Pengu.Renderer
                         {
                             new WriteDescriptorSet
                             {
-                                DestinationSet = descriptorSets[idx],
+                                DestinationSet = perImageResources[idx].descriptorSet,
                                 DestinationBinding = 0,
                                 DestinationArrayElement = 0,
                                 DescriptorType = DescriptorType.UniformBuffer,
@@ -141,7 +153,7 @@ namespace Pengu.Renderer
                                 {
                                     new DescriptorBufferInfo
                                     {
-                                        Buffer = uniformBuffers[idx],
+                                        Buffer = perImageResources[idx].uniformBuffer,
                                         Offset = 0,
                                         Range = FontUniformObject.Size
                                     }
@@ -149,7 +161,7 @@ namespace Pengu.Renderer
                             },
                             new WriteDescriptorSet
                             {
-                                DestinationSet = descriptorSets[idx],
+                                DestinationSet = perImageResources[idx].descriptorSet,
                                 DestinationBinding = 1,
                                 DestinationArrayElement = 0,
                                 DescriptorType = DescriptorType.CombinedImageSampler,
@@ -212,33 +224,26 @@ namespace Pengu.Renderer
 
                 DisposeVertexIndexBuffers();
 
-                stagingVertexBuffer = context.CreateBuffer(vertexSize, BufferUsageFlags.TransferSource,
-                    MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingVertexBufferMemory);
+                stagingVertexIndexBuffer = context.CreateBuffer(vertexSize + indexSize, BufferUsageFlags.TransferSource,
+                    MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingIndexVertexBufferMemory);
+                stagingIndexVertexBufferMemoryStartPtr = stagingIndexVertexBufferMemory.Map(0, vertexSize + indexSize);
 
-                vertexBuffer = context.CreateBuffer(vertexSize, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer,
-                    MemoryPropertyFlags.DeviceLocal, out vertexBufferMemory);
-
-                stagingIndexBuffer = context.CreateBuffer(indexSize, BufferUsageFlags.TransferSource,
-                    MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingIndexBufferMemory);
-
-                indexBuffer = context.CreateBuffer(indexSize, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer,
-                    MemoryPropertyFlags.DeviceLocal, out indexBufferMemory);
+                vertexIndexBuffer = context.CreateBuffer(vertexSize + indexSize, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer,
+                    MemoryPropertyFlags.DeviceLocal, out vertexIndexBufferMemory);
             }
 
             private void DisposeVertexIndexBuffers()
             {
-                vertexBuffer?.Dispose();
-                vertexBufferMemory?.Free();
-                indexBuffer?.Dispose();
-                indexBufferMemory?.Free();
-                stagingVertexBuffer?.Dispose();
-                stagingVertexBufferMemory?.Free();
-                stagingIndexBuffer?.Dispose();
-                stagingIndexBufferMemory?.Free();
+                vertexIndexBuffer?.Dispose();
+                vertexIndexBufferMemory?.Free();
+                stagingVertexIndexBuffer?.Dispose();
+                stagingIndexVertexBufferMemory?.Free();
             }
 
-            public void PreRender(uint nextImage)
+            public CommandBuffer[] PreRender(uint nextImage)
             {
+                CommandBuffer resultCommandBuffer = default;
+
                 if (IsBufferDataDirty)
                 {
                     UsedCharacters = (uint)fontStrings.Sum(fs => fs.Value?.Count(s => s != ' ' && s != '\n') ?? 0);
@@ -252,9 +257,9 @@ namespace Pengu.Renderer
                     unsafe
                     {
                         // build the string vertices
-                        var vertexPtr = (FontVertex*)stagingVertexBufferMemory.Map(0, UsedVertices * FontVertex.Size);
+                        var vertexPtr = (FontVertex*)stagingIndexVertexBufferMemoryStartPtr.ToPointer();
                         ushort vertexIdx = 0;
-                        var indexPtr = (ushort*)stagingIndexBufferMemory.Map(0, UsedIndices * sizeof(ushort));
+                        var indexPtr = (ushort*)(vertexPtr + UsedCharacters * FontVertex.Size);
 
                         foreach (var fs in fontStrings)
                             if (!string.IsNullOrWhiteSpace(fs.Value))
@@ -316,30 +321,25 @@ namespace Pengu.Renderer
                                 }
                             }
                     }
-                    stagingIndexBufferMemory.Unmap();
-                    stagingVertexBufferMemory.Unmap();
 
-                    context.CopyBuffer(stagingVertexBuffer, vertexBuffer, UsedVertices * FontVertex.Size);
-                    context.CopyBuffer(stagingIndexBuffer, indexBuffer, UsedIndices * sizeof(ushort));
+                    resultCommandBuffer = context.CopyBuffer(stagingVertexIndexBuffer, vertexIndexBuffer, UsedVertices * (FontVertex.Size + sizeof(ushort)));
 
                     IsBufferDataDirty = false;
                 }
 
                 // update the UBO with the time and X/Y offset
-                unsafe
-                {
-                    var memPtr = (FontUniformObject*)uniformBufferMemories[nextImage].Map(0, FontUniformObject.Size);
-                    *memPtr = new FontUniformObject { time = (float)totalElapsedTime.TotalMilliseconds };
-                }
-                uniformBufferMemories[nextImage].Unmap();
+                *(FontUniformObject*)perImageResources[nextImage].uniformBufferMemoryStartPtr =
+                    new FontUniformObject { time = (float)totalElapsedTime.TotalMilliseconds };
+
+                return resultCommandBuffer is null ? Array.Empty<CommandBuffer>() : new[] { resultCommandBuffer };
             }
 
             public void Draw(CommandBuffer commandBuffer, int idx)
             {
                 commandBuffer.BindPipeline(PipelineBindPoint.Graphics, pipeline);
-                commandBuffer.BindVertexBuffers(0, vertexBuffer, 0);
-                commandBuffer.BindIndexBuffer(indexBuffer, 0, IndexType.Uint16);
-                commandBuffer.BindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout, 0, descriptorSets[idx], null);
+                commandBuffer.BindVertexBuffers(0, vertexIndexBuffer, 0);
+                commandBuffer.BindIndexBuffer(vertexIndexBuffer, UsedVertices * FontVertex.Size, IndexType.Uint16);
+                commandBuffer.BindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout, 0, perImageResources[idx].descriptorSet, null);
                 commandBuffer.DrawIndexed(UsedIndices, 1, 0, 0, 0);
             }
 
@@ -382,8 +382,11 @@ namespace Pengu.Renderer
                     descriptorSetLayout.Dispose();
                     pipeline.Dispose();
                     pipelineLayout.Dispose();
-                    uniformBuffers.ForEach(w => w.Dispose());
-                    uniformBufferMemories.ForEach(w => w.Free());
+                    perImageResources.ForEach(w =>
+                    {
+                        w.uniformBuffer.Dispose();
+                        w.uniformBufferMemory.Free();
+                    });
                     DisposeVertexIndexBuffers();
 
                     disposedValue = true;

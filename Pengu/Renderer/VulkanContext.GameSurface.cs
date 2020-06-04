@@ -7,6 +7,7 @@ using GLFW;
 using Pengu.VirtualMachine;
 using System.Diagnostics;
 using SharpVk.Multivendor;
+using SharpVk;
 
 namespace Pengu.Renderer
 {
@@ -28,7 +29,11 @@ namespace Pengu.Renderer
 
             public void UpdateLogic(TimeSpan elapsedTime) => Windows.ForEach(w => w.UpdateLogic(elapsedTime));
 
-            public void PreRender(uint nextImage) => Windows.ForEach(w => w.PreRender(nextImage));
+            public CommandBuffer[] PreRender(uint nextImage)
+            {
+                Windows.ForEach(w => w.PreRender(nextImage));
+                return Array.Empty<CommandBuffer>();
+            }
 
             public Vector2 ScreenToCharacterSize(Vector2 vec, FontString fs)
             {

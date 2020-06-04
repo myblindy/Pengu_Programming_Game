@@ -1,4 +1,5 @@
 ﻿using GLFW;
+using SharpVk;
 using System;
 using System.Numerics;
 
@@ -23,13 +24,15 @@ namespace Pengu.Renderer
 
             protected abstract void FillFontString();
 
-            public virtual void PreRender(uint nextImage)
+            public virtual CommandBuffer[] PreRender(uint nextImage)
             {
                 if (fontStringDirty)
                 {
                     FillFontString();
                     fontStringDirty = false;
                 }
+
+                return Array.Empty<CommandBuffer>();
             }
 
             public abstract bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers);

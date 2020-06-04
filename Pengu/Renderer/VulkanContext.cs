@@ -56,6 +56,8 @@ namespace Pengu.Renderer
         Semaphore[] imageAvailableSemaphores, renderingFinishedSemaphores;
         Fence[] inflightFences, imagesInFlight;
 
+        readonly List<CommandBuffer> TransientCommandBuffers = new List<CommandBuffer>();
+
         interface IInputAction { }
 
         struct KeyAction : IInputAction
@@ -179,7 +181,7 @@ namespace Pengu.Renderer
                     ApplicationVersion = new Version(1, 0, 0),
                     EngineName = "SharpVk",
                     EngineVersion = new Version(1, 0, 0),
-                    ApiVersion = new Version(1, 1, 0), 
+                    ApiVersion = new Version(1, 1, 0),
                 });
 
             // debug layer
@@ -341,25 +343,35 @@ namespace Pengu.Renderer
             return buffer;
         }
 
-        void CopyBuffer(Buffer sourceBuffer, Buffer destinationBuffer, ulong size) =>
-            RunTransientCommands(commandBuffer => commandBuffer.CopyBuffer(sourceBuffer, destinationBuffer, new BufferCopy { Size = size }));
+        CommandBuffer CopyBuffer(Buffer sourceBuffer, Buffer destinationBuffer, ulong size) =>
+            RunTransientCommands(commandBuffer =>
+            {
+                commandBuffer.CopyBuffer(sourceBuffer, destinationBuffer, new BufferCopy { Size = size });
+                commandBuffer.PipelineBarrier(PipelineStageFlags.Transfer, PipelineStageFlags.VertexInput, null,
+                    new BufferMemoryBarrier
+                    {
+                        SourceAccessMask = AccessFlags.MemoryWrite,
+                        DestinationAccessMask = AccessFlags.VertexAttributeRead,
+                        SourceQueueFamilyIndex = uint.MaxValue,
+                        DestinationQueueFamilyIndex = uint.MaxValue,
+                        Buffer = destinationBuffer,
+                        Size = size,
+                    }, null);
+            });
 
-        void RunTransientCommands(Action<CommandBuffer> action)
+        CommandBuffer RunTransientCommands(Action<CommandBuffer> action)
         {
-            var commandbuffers = device.AllocateCommandBuffers(transientTransferCommandPool, CommandBufferLevel.Primary, 1);
-            commandbuffers[0].Begin(CommandBufferUsageFlags.OneTimeSubmit);
+            var commandBuffer = device.AllocateCommandBuffer(transientTransferCommandPool, CommandBufferLevel.Primary);
+            commandBuffer.Begin(CommandBufferUsageFlags.OneTimeSubmit);
+            action(commandBuffer);
+            commandBuffer.End();
 
-            action(commandbuffers[0]);
+            TransientCommandBuffers.Add(commandBuffer);
 
-            commandbuffers[0].End();
-
-            transferQueue.Submit(new SubmitInfo { CommandBuffers = commandbuffers }, null);
-            transferQueue.WaitIdle();
-
-            transientTransferCommandPool.FreeCommandBuffers(commandbuffers);
+            return commandBuffer;
         }
 
-        void TransitionImageLayout(Image image, ImageLayout oldLayout, ImageLayout newLayout) =>
+        CommandBuffer TransitionImageLayout(Image image, ImageLayout oldLayout, ImageLayout newLayout) =>
             RunTransientCommands(commandBuffer =>
             {
                 var barrier = new ImageMemoryBarrier
@@ -403,7 +415,7 @@ namespace Pengu.Renderer
                 commandBuffer.PipelineBarrier(sourceStage, destinationStage, null, null, barrier);
             });
 
-        void CopyBufferToImage2D(Buffer buffer, Image image, uint width, uint height) =>
+        CommandBuffer CopyBufferToImage2D(Buffer buffer, Image image, uint width, uint height) =>
             RunTransientCommands(
                 commandBuffer => commandBuffer.CopyBufferToImage(buffer, image, ImageLayout.TransferDestinationOptimal,
                     new BufferImageCopy
@@ -505,8 +517,10 @@ namespace Pengu.Renderer
                 monospaceFont.IsCommandBufferDirty = false;
             }
 
-            gameSurface.PreRender(nextImage);
-            monospaceFont.PreRender(nextImage);
+            var commandBuffers = new List<CommandBuffer>();
+
+            commandBuffers.AddRange(gameSurface.PreRender(nextImage));
+            commandBuffers.AddRange(monospaceFont.PreRender(nextImage));
 
             if (swapChainImageCommandBuffersDirty[(int)nextImage])
             {
@@ -521,10 +535,12 @@ namespace Pengu.Renderer
                 swapChainImageCommandBuffersDirty[(int)nextImage] = false;
             }
 
+            commandBuffers.Add(swapChainImageCommandBuffers[nextImage]);
+
             graphicsQueue.Submit(
                 new SubmitInfo
                 {
-                    CommandBuffers = new[] { swapChainImageCommandBuffers[nextImage] },
+                    CommandBuffers = commandBuffers.ToArray(),
                     SignalSemaphores = new[] { renderingFinishedSemaphores[currentFrame] },
                     WaitDestinationStageMask = new[] { PipelineStageFlags.ColorAttachmentOutput },
                     WaitSemaphores = new[] { imageAvailableSemaphores[currentFrame] }
@@ -534,6 +550,13 @@ namespace Pengu.Renderer
             presentQueue.Present(renderingFinishedSemaphores[currentFrame], swapChain, nextImage);
 
             currentFrame = (currentFrame + 1) % swapChainImages.Length;
+
+            // free the transient command buffers
+            if (TransientCommandBuffers.Any())
+            {
+                transientTransferCommandPool.FreeCommandBuffers(TransientCommandBuffers.ToArray());
+                TransientCommandBuffers.Clear();
+            }
         }
 
         static readonly TimeSpan fpsMeasurementInterval = TimeSpan.FromSeconds(1);
@@ -618,6 +641,6 @@ namespace Pengu.Renderer
         public bool ProcessMouseMove(double x, double y);
         public bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers);
         public void UpdateLogic(TimeSpan elapsedTime);
-        public void PreRender(uint nextImage);
+        public CommandBuffer[] PreRender(uint nextImage);
     }
 }

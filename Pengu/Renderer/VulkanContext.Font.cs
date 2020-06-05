@@ -22,8 +22,9 @@ namespace Pengu.Renderer
 {
     partial class VulkanContext
     {
-        unsafe class Font : IRenderableModule, IDisposable
+        internal class Font : IRenderableModule, IDisposable
         {
+            public const char PrintableSpace = ' ';
             readonly VulkanContext context;
             private readonly Dictionary<char, (float u0, float v0, float u1, float v1)> Characters =
                 new Dictionary<char, (float u0, float v0, float u1, float v1)>();
@@ -240,7 +241,7 @@ namespace Pengu.Renderer
                 stagingIndexVertexBufferMemory?.Free();
             }
 
-            public CommandBuffer[] PreRender(uint nextImage)
+            public unsafe CommandBuffer[] PreRender(uint nextImage)
             {
                 CommandBuffer resultCommandBuffer = default;
 
@@ -257,7 +258,7 @@ namespace Pengu.Renderer
                     // build the string vertices
                     var vertexPtr = (FontVertex*)stagingIndexVertexBufferMemoryStartPtr.ToPointer();
                     ushort vertexIdx = 0;
-                    var indexPtr = (ushort*)(vertexPtr + UsedVertices);
+                    var indexPtr = (ushort*)(vertexPtr + MaxVertices);
 
                     foreach (var fs in fontStrings)
                         if (!string.IsNullOrWhiteSpace(fs.Value))
@@ -280,14 +281,14 @@ namespace Pengu.Renderer
                                 }
                                 else
                                 {
-                                    var (u0, v0, u1, v1) = Characters[ch == ' ' ? ' ' : ch];
+                                    var (u0, v0, u1, v1) = Characters[ch == PrintableSpace ? ' ' : ch];
                                     var aspect = (u1 - u0) / (v1 - v0);
                                     var xSize = fs.Size * aspect;
 
                                     var @override = fs.TryGetOverrideForIndex(charIndex);
 
-                                    var bg = FontColor.Black;
-                                    var fg = FontColor.BrightGreen;
+                                    var bg = fs.DefaultBackground;
+                                    var fg = fs.DefaultForeground;
                                     var selected = false;
 
                                     if (@override.HasValue)
@@ -320,7 +321,7 @@ namespace Pengu.Renderer
                         }
 
                     resultCommandBuffer = context.CopyBuffer(stagingVertexIndexBuffer, vertexIndexBuffer,
-                        UsedVertices * FontVertex.Size + UsedIndices * sizeof(ushort));
+                        MaxVertices * FontVertex.Size + MaxIndices * sizeof(ushort));
 
                     IsBufferDataDirty = false;
                 }
@@ -336,7 +337,7 @@ namespace Pengu.Renderer
             {
                 commandBuffer.BindPipeline(PipelineBindPoint.Graphics, pipeline);
                 commandBuffer.BindVertexBuffers(0, vertexIndexBuffer, 0);
-                commandBuffer.BindIndexBuffer(vertexIndexBuffer, UsedVertices * FontVertex.Size, IndexType.Uint16);
+                commandBuffer.BindIndexBuffer(vertexIndexBuffer, MaxVertices * FontVertex.Size, IndexType.Uint16);
                 commandBuffer.BindDescriptorSets(PipelineBindPoint.Graphics, pipelineLayout, 0, perImageResources[idx].descriptorSet, null);
                 commandBuffer.DrawIndexed(UsedIndices, 1, 0, 0, 0);
             }
@@ -404,7 +405,7 @@ namespace Pengu.Renderer
             #endregion
         }
 
-        class FontString
+        internal class FontString
         {
             readonly Font font;
 
@@ -417,7 +418,7 @@ namespace Pengu.Renderer
 
             public (FontColor bg, FontColor fg, bool selected)? TryGetOverrideForIndex(int needle)
             {
-                if (Overrides is null) return null;
+                if (Overrides is null || Overrides.Length == 0) return null;
 
                 int min = 0, max = Overrides.Length, idx = (max - min) / 2;
                 while (true)
@@ -436,11 +437,11 @@ namespace Pengu.Renderer
             }
 
             public void Set(string value = null, FontColor? defaultBg = null, FontColor? defaultFg = null, Vector2? offset = null,
-                (int start, int count, FontColor bg, FontColor fg, bool selected)[] overrides = null)
+                FontOverride[] overrides = null)
             {
                 if ((value is null || value == Value) && (!defaultBg.HasValue || defaultBg == DefaultBackground) &&
                     (!defaultFg.HasValue || defaultFg == DefaultForeground) && (!offset.HasValue || offset == Offset) &&
-                    (overrides is null || overrides.SequenceEqual(Overrides)))
+                    (overrides is null || (!(Overrides is null) && overrides.SequenceEqual(Overrides))))
                 {
                     return;
                 }
@@ -467,7 +468,7 @@ namespace Pengu.Renderer
 
             public FontColor DefaultForeground { get; private set; }
 
-            public (int start, int count, FontColor bg, FontColor fg, bool selected)[] Overrides { get; private set; }
+            public FontOverride[] Overrides { get; private set; }
 
             public Vector2 Offset { get; private set; }
 
@@ -487,7 +488,7 @@ namespace Pengu.Renderer
             public static readonly uint Size = (uint)Marshal.SizeOf<FontUniformObject>();
         }
 
-        enum FontColor
+        internal enum FontColor
         {
             Black,
             DarkBlue,
@@ -557,5 +558,40 @@ namespace Pengu.Renderer
                     },
                 };
         }
+    }
+
+    internal struct FontOverride : IEquatable<FontOverride>
+    {
+        public int start;
+        public int count;
+        public VulkanContext.FontColor bg;
+        public VulkanContext.FontColor fg;
+        public bool selected;
+
+        public FontOverride(int start, int count, VulkanContext.FontColor bg, VulkanContext.FontColor fg, bool selected)
+        {
+            this.start = start;
+            this.count = count;
+            this.bg = bg;
+            this.fg = fg;
+            this.selected = selected;
+        }
+
+        public override bool Equals(object obj) => obj is FontOverride other && Equals(other);
+        public override int GetHashCode() => HashCode.Combine(start, count, bg, fg, selected);
+
+        public void Deconstruct(out int start, out int count, out VulkanContext.FontColor bg, out VulkanContext.FontColor fg, out bool selected)
+        {
+            start = this.start;
+            count = this.count;
+            bg = this.bg;
+            fg = this.fg;
+            selected = this.selected;
+        }
+
+        public static implicit operator (int start, int count, VulkanContext.FontColor bg, VulkanContext.FontColor fg, bool selected)(FontOverride value) => (value.start, value.count, value.bg, value.fg, value.selected);
+        public static implicit operator FontOverride((int start, int count, VulkanContext.FontColor bg, VulkanContext.FontColor fg, bool selected) value) => new FontOverride(value.start, value.count, value.bg, value.fg, value.selected);
+
+        public bool Equals(FontOverride other) => start == other.start && count == other.count && bg == other.bg && fg == other.fg && selected == other.selected;
     }
 }

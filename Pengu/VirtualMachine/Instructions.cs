@@ -111,7 +111,7 @@ namespace Pengu.VirtualMachine
 						// Mov_Reg_PReg
 						
 		    I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] = vm.Registers[r1];
+            vm.Registers[r0] = vm.Memory[vm.Registers[r1]];
             return (ushort)(m + 1);
 					},
 									(vm, m) =>
@@ -968,7 +968,7 @@ namespace Pengu.VirtualMachine
 
 				if(!tokens.Any()) continue;
 
-				int GetNumber(string n) => n.StartsWith("0x") ? Convert.ToInt32(n, 16) : n[0] == '.' ? labels[n[1..]] : int.Parse(n);
+				int GetNumber(string n) => n.StartsWith("0x") ? Convert.ToInt32(n, 16) : n.StartsWith("0b") ? Convert.ToInt32(n[2..], 2) : n[0] == '.' ? labels[n[1..]] : int.Parse(n);
 				bool IsReg(string s, out int r) 
 				{ 
 					var m = Regex.Match(s, @"^r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
@@ -977,7 +977,7 @@ namespace Pengu.VirtualMachine
 				}
 				bool IsI8(string s, out int r) 
 				{ 
-					var m = Regex.Match(s, @"^(\d+|0x[\dA-Fa-f]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^(\d+|0x[\dA-Fa-f]+|0b[01]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
@@ -989,7 +989,7 @@ namespace Pengu.VirtualMachine
 				}
 				bool IsPI8(string s, out int r) 
 				{ 
-					var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+)|0b[01]+\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
@@ -1001,13 +1001,13 @@ namespace Pengu.VirtualMachine
 				}
 				bool IsRI8(string s, out int r)
 				{
-					var m = Regex.Match(s, @"^\$\s*\+\s*(\d+|0x[\dA-Fa-f]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^\$\s*\+\s*(\d+|0x[\dA-Fa-f]+|0b[01]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}
 				bool IsAtAddress(string s, out int r)
 				{ 
-					var m = Regex.Match(s, @"^@(\d+|0x[\dA-Fa-f]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^@(\d+|0x[\dA-Fa-f]+|0b[01]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}

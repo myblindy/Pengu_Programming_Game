@@ -5,15 +5,14 @@ using System.Numerics;
 using System.Linq;
 using GLFW;
 using Pengu.VirtualMachine;
-using System.Diagnostics;
-using SharpVk.Multivendor;
 using SharpVk;
+using Pengu.Renderer.UI;
 
 namespace Pengu.Renderer
 {
     partial class VulkanContext
     {
-        class GameSurface : IRenderableModule
+        internal class GameSurface : IRenderableModule
         {
             readonly List<BaseWindow> Windows = new List<BaseWindow>();
             readonly VulkanContext context;
@@ -78,6 +77,7 @@ namespace Pengu.Renderer
             }
 
             public void AddHexEditorWindow(VM vm) => Windows.Insert(0, new HexEditorWindow(context, this, vm));
+            internal void AddPlaygroundWindow(VM vm) => Windows.Insert(0, new PlaygroundWindow(context, this, vm));
         }
     }
 }

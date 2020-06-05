@@ -32,7 +32,7 @@ namespace Pengu.Renderer
         readonly Instance instance;
         readonly DebugReportCallback debugReportCallback;
 
-        Extent2D extent;
+        internal Extent2D extent;
         Surface surface;
         PhysicalDevice physicalDevice;
         Device device;
@@ -48,7 +48,7 @@ namespace Pengu.Renderer
         CommandBuffer[] swapChainImageCommandBuffers;
         BitVector32 swapChainImageCommandBuffersDirty;
 
-        Font monospaceFont;
+        internal Font monospaceFont;
         FontString fontStringFps;
 
         GameSurface gameSurface;
@@ -310,6 +310,7 @@ namespace Pengu.Renderer
 
             gameSurface = new GameSurface(this);
             gameSurface.AddHexEditorWindow(vm);
+            gameSurface.AddPlaygroundWindow(vm);
         }
 
         ShaderModule CreateShaderModule(string filePath)
@@ -507,6 +508,7 @@ namespace Pengu.Renderer
         }
 
         int currentFrame = 0;
+        List<CommandBuffer> SubmitCommandBuffers = new List<CommandBuffer>();
         private void DrawFrame()
         {
             device.WaitForFences(inflightFences[currentFrame], true, ulong.MaxValue);
@@ -526,10 +528,9 @@ namespace Pengu.Renderer
                 monospaceFont.IsCommandBufferDirty = false;
             }
 
-            var commandBuffers = new List<CommandBuffer>();
-
-            commandBuffers.AddRange(gameSurface.PreRender(nextImage));
-            commandBuffers.AddRange(monospaceFont.PreRender(nextImage));
+            SubmitCommandBuffers.Clear();
+            SubmitCommandBuffers.AddRange(gameSurface.PreRender(nextImage));
+            SubmitCommandBuffers.AddRange(monospaceFont.PreRender(nextImage));
 
             if (swapChainImageCommandBuffersDirty[(int)nextImage])
             {
@@ -544,12 +545,12 @@ namespace Pengu.Renderer
                 swapChainImageCommandBuffersDirty[(int)nextImage] = false;
             }
 
-            commandBuffers.Add(swapChainImageCommandBuffers[nextImage]);
+            SubmitCommandBuffers.Add(swapChainImageCommandBuffers[nextImage]);
 
             graphicsQueue.Submit(
                 new SubmitInfo
                 {
-                    CommandBuffers = commandBuffers.ToArray(),
+                    CommandBuffers = SubmitCommandBuffers.ToArray(),
                     SignalSemaphores = new[] { renderingFinishedSemaphores[currentFrame] },
                     WaitDestinationStageMask = new[] { PipelineStageFlags.ColorAttachmentOutput },
                     WaitSemaphores = new[] { imageAvailableSemaphores[currentFrame] }

@@ -19,25 +19,38 @@ namespace Pengu
             var vm = new VM(VMType.BitLength8, registers: 1, memory: 60);
 
             InstructionSet.Assemble(@"
-@1
-db 2
-db 15
+db 0b0111111
+db 0b0000110
+db 0b1011011
+db 0b1001111
+db 0b1100110
+db 0b1101101
+db 0b1111101
+db 0b0000111
+db 0b1111111
+db 0b1100111
 
 org
 mov r0 0
 
-.loop1
-push r0
+.loop
 addi r0 1
-cmp r0 10
-jl .loop1
+modi r0 100
 
-.loop2
+push r0
+divi r0 10
+mov r0 [r0]
+int 0x45
 pop r0
-cmp r0 0
-jg .loop2
 
-jmp .loop1", vm);
+push r0
+modi r0 10
+mov r0 [r0]
+addi r0 0b10000000
+int 0x45
+pop r0
+
+jmp .loop", vm);
             vm.Reset();
 
             using var renderer = new VulkanContext(vm, debug);

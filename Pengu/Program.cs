@@ -51,7 +51,6 @@ int 0x45
 pop r0
 
 jmp .loop", vm);
-            vm.Reset();
 
             using var renderer = new VulkanContext(vm, debug);
             renderer.Run();

@@ -55,7 +55,7 @@ namespace Pengu.Renderer.UI
                 lastMouseCharacterPosition = newMouseCharacterPosition;     // write the current mouse position
             }
 
-            return false;
+            return true;
         }
 
         public virtual bool ProcessMouseMove(double x, double y)

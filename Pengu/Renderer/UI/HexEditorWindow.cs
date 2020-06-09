@@ -23,12 +23,12 @@ namespace Pengu.Renderer.UI
             this.vm = vm;
             vm.RegisterInterrupt(0, _ => { done = true; running = false; });
 
-            positionX = 5;
+            (positionX, positionY) = (8, 2);
 
-            fontString = context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -0.9f), 0.055f);
+            fontString = context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -1), 0.055f);
         }
 
-        protected override void FillFontString()
+        protected override void FillFontString(bool first)
         {
             static string TryGetHexAt(byte[] array, int index) => index < array.Length ? array[index].ToString("X2") : "..";
 

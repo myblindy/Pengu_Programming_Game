@@ -446,14 +446,28 @@ namespace Pengu.Renderer
                     return;
                 }
 
-                var nonSpaceLengthNewValue = value?.Count(c => c != '\n' && c != ' ') ?? 0;
+                int nonSpaceLengthNewValue = 0, width = 0, currentWidth = 0, height = 1;
+                if (!(value is null))
+                {
+                    foreach (var ch in value)
+                    {
+                        if (ch != '\n' && ch != ' ')
+                            ++nonSpaceLengthNewValue;
+                        if (ch == '\n')
+                            (width, currentWidth, height) = (Math.Max(width, currentWidth), 0, height + 1);
+                        else
+                            ++currentWidth;
+                    }
+
+                    if (currentWidth > width) width = currentWidth;
+
+                    (Width, Height) = (width, height);
+                }
+
                 font.IsCommandBufferDirty = Length != nonSpaceLengthNewValue;
 
                 if (!(value is null))
-                {
-                    Value = value;
-                    Length = nonSpaceLengthNewValue;
-                }
+                    (Value, Length) = (value, nonSpaceLengthNewValue);
                 if (defaultBg.HasValue) DefaultBackground = defaultBg.Value;
                 if (defaultFg.HasValue) DefaultForeground = defaultFg.Value;
                 if (!(overrides is null)) Overrides = overrides;
@@ -473,6 +487,10 @@ namespace Pengu.Renderer
             public Vector2 Offset { get; private set; }
 
             public int Length { get; private set; }
+
+            public int Width { get; private set; }
+
+            public int Height { get; private set; }
 
             Vector2 position;
             public Vector2 Position { get => position; set { position = value; font.IsBufferDataDirty = true; font.IsCommandBufferDirty = true; } }

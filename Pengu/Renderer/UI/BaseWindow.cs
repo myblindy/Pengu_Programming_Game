@@ -20,14 +20,15 @@ namespace Pengu.Renderer.UI
         public BaseWindow(VulkanContext context, VulkanContext.GameSurface surface) =>
             (this.context, this.surface) = (context, surface);
 
-        protected abstract void FillFontString();
+        protected abstract void FillFontString(bool first);
 
+        bool firstFillFontString = true;
         public virtual CommandBuffer[] PreRender(uint nextImage)
         {
             if (fontStringDirty)
             {
-                FillFontString();
-                fontStringDirty = false;
+                FillFontString(firstFillFontString);
+                firstFillFontString = fontStringDirty = false;
             }
 
             return Array.Empty<CommandBuffer>();
@@ -37,6 +38,13 @@ namespace Pengu.Renderer.UI
 
         public virtual bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers)
         {
+            if (newMouseCharacterPosition.X < positionX || newMouseCharacterPosition.Y < positionY ||
+                newMouseCharacterPosition.X > positionX + fontString.Width || newMouseCharacterPosition.Y > positionY + fontString.Height)
+            {
+                return false;
+            }
+
+
             if (button == MouseButton.Left && action == InputState.Press)
                 dragging = true;
             else if (button == MouseButton.Left && action == InputState.Release)

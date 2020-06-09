@@ -508,7 +508,7 @@ namespace Pengu.Renderer
         }
 
         int currentFrame = 0;
-        List<CommandBuffer> SubmitCommandBuffers = new List<CommandBuffer>();
+        readonly List<CommandBuffer> SubmitCommandBuffers = new List<CommandBuffer>();
         private void DrawFrame()
         {
             device.WaitForFences(inflightFences[currentFrame], true, ulong.MaxValue);

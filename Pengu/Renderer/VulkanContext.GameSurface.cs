@@ -15,6 +15,8 @@ namespace Pengu.Renderer
         internal class GameSurface : IRenderableModule
         {
             readonly List<BaseWindow> Windows = new List<BaseWindow>();
+            BaseWindow FocusedWindow;
+
             readonly VulkanContext context;
             readonly Vector2 characterSize;
 
@@ -37,19 +39,19 @@ namespace Pengu.Renderer
             public Vector2 ScreenToCharacterSize(Vector2 vec, FontString fs)
             {
                 var xFontSize = fs.Size / characterSize.Y * characterSize.X;
-                return new Vector2((int)(2 / xFontSize * vec.X), (int)(2 / fs.Size * vec.Y));
+                return new Vector2((int)(4 / xFontSize * vec.X), (int)(4 / fs.Size * vec.Y));
             }
 
             public Vector2 CharacterToScreenSize(int x, int y, FontString fs)
             {
                 var xFontSize = fs.Size / characterSize.Y * characterSize.X;
-                return new Vector2(/*fs.Offset.X +*/ x * xFontSize, /*fs.Offset.Y +*/ y * fs.Size);
+                return new Vector2(x * xFontSize / 2, y * fs.Size / 2);
             }
 
             public Vector2 CharacterToScreenSize(Vector2 v, FontString fs)
             {
                 var xFontSize = fs.Size / characterSize.Y * characterSize.X;
-                return new Vector2(/*fs.Offset.X +*/ v.X * xFontSize, /*fs.Offset.Y +*/ v.Y * fs.Size);
+                return new Vector2(v.X * xFontSize / 2, v.Y * fs.Size / 2);
             }
 
             public bool ProcessMouseMove(double x, double y)
@@ -76,8 +78,16 @@ namespace Pengu.Renderer
                 return false;
             }
 
-            public void AddHexEditorWindow(VM vm) => Windows.Insert(0, new HexEditorWindow(context, this, vm));
-            internal void AddPlaygroundWindow(VM vm) => Windows.Insert(0, new PlaygroundWindow(context, this, vm));
+            private void AddNewWindow(BaseWindow window)
+            {
+                if (Windows.Count == 0)
+                    FocusedWindow = window;
+
+                Windows.Insert(0, window);
+            }
+
+            public void AddHexEditorWindow(VM vm) => AddNewWindow(new HexEditorWindow(context, this, vm));
+            internal void AddPlaygroundWindow(VM vm) => AddNewWindow(new PlaygroundWindow(context, this, vm));
         }
     }
 }

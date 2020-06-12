@@ -10,7 +10,7 @@ namespace Pengu.Renderer.UI
     {
         readonly VM vm;
 
-        const int editorLineBytes = 0x20;
+        const int editorLineBytes = 0x15;
         const int addressSizeBytes = 2;
         const int linesCount = 15;
 
@@ -38,6 +38,7 @@ namespace Pengu.Renderer.UI
             const int windowFrameWidth = 1 + addressSizeBytes * 2 + 2 + 1 + editorLineBytes * 3 + 1 + 1;
             var title = $"HEX{VulkanContext.Font.PrintableSpace}EDITOR";
             int titleHalfOffset = (windowFrameWidth - title.Length) / 2;
+            int titleHalfOffsetDelta = (windowFrameWidth - title.Length) % 2;
 
             var line = Math.DivRem(selectedHalfByte, editorLineBytes * 2, out var halfIndexInLine);
 
@@ -55,7 +56,7 @@ namespace Pengu.Renderer.UI
                 done ? VulkanContext.FontColor.Black : VulkanContext.FontColor.White, false);
             var overrides = new FontOverride[]
                 {
-                    (1 + frameForAddress.Length + 1 + titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2, title.Length + 2,
+                    (1 + frameForAddress.Length + 1 + titleHalfOffset + titleHalfOffsetDelta - 4 - 1 - addressSizeBytes * 2 - 2, title.Length + 2,
                         VulkanContext.FontColor.White, VulkanContext.FontColor.Black, false),
                     (headerAddress0, 2, VulkanContext.FontColor.Black, VulkanContext.FontColor.BrightCyan, true),
                     (leftAddress0, 4, VulkanContext.FontColor.Black, VulkanContext.FontColor.BrightCyan, true),
@@ -68,14 +69,16 @@ namespace Pengu.Renderer.UI
             var statusLine = " NEXT ASM: " + disasmNext.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7 - regFlags.Length) + regFlags;
 
             var disasmSelected = InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---";
+            var editorLineBytes31Lines = new string('─', editorLineBytes * 3 + 1);
+            var addressSizeBytes22Lines = new string('─', addressSizeBytes * 2 + 2);
             FontString.Set(
-                "╔" + frameForAddress + "╤" + new string('═', titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2) +
+                "╔" + frameForAddress + "╤" + new string('═', titleHalfOffset + titleHalfOffsetDelta - 4 - 1 - addressSizeBytes * 2 - 2) +
                     VulkanContext.Font.PrintableSpace + title + VulkanContext.Font.PrintableSpace + new string('═', titleHalfOffset) + "╗\n" +
                 "║" + new string(' ', addressSizeBytes * 2 + 2) + "│" + string.Concat(Enumerable.Range(0, editorLineBytes).Select(idx => $" {idx:X2}")) + " ║\n" +
-                "╟" + new string('─', addressSizeBytes * 2 + 2) + "┼" + new string('─', editorLineBytes * 3 + 1) + "╢\n" +
+                "╟" + addressSizeBytes22Lines + "┼" + editorLineBytes31Lines + "╢\n" +
                 string.Concat(Enumerable.Range(0, linesCount).Select(lineIdx =>
                     $"║ {lineIdx * editorLineBytes:X4} │ {string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => TryGetHexAt(vm.Memory, lineIdx * editorLineBytes + idx)))} ║\n")) +
-                "╟" + new string('─', addressSizeBytes * 2 + 2) + "┴" + new string('─', editorLineBytes * 3 + 1) + "╢\n" +
+                "╟" + addressSizeBytes22Lines + "┴" + editorLineBytes31Lines + "╢\n" +
                 "║" + statusLine + "║\n" +
                 "║ SEL  ASM: " + disasmSelected.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7) + "║\n" +
                 "╚" + new string('═', addressSizeBytes * 2 + 2 + 1 + editorLineBytes * 3 + 1) + "╝",
@@ -83,7 +86,7 @@ namespace Pengu.Renderer.UI
 
             if (first)
                 FontString.Set(defaultBg: VulkanContext.FontColor.Black, defaultFg: VulkanContext.FontColor.BrightGreen,
-                    offset: surface.CharacterToScreenSize(positionX, positionY, FontString));
+                    offset: surface.CharacterToScreenSize(positionX, positionY, FontString), fillBackground: true);
         }
 
         public override bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers)

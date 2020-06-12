@@ -256,7 +256,7 @@ namespace Pengu.VirtualMachine
             return null;
 		}
 
-        public static void Assemble(string s, VM vm)
+        public static void Assemble(VM vm, string s)
         {
 			ushort memidx = 0;
 			int i0, i1;
@@ -296,7 +296,7 @@ namespace Pengu.VirtualMachine
                     tokens.Add(line[start..idx]);
                 }
 
-				if(!tokens.Any()) continue;
+				if(!tokens.Any() || tokens[0].StartsWith(";")) continue;
 
 				int GetNumber(string n) => n.StartsWith("0x") ? Convert.ToInt32(n, 16) : n.StartsWith("0b") ? Convert.ToInt32(n[2..], 2) : n[0] == '.' ? labels[n[1..]] : int.Parse(n);
 				bool IsReg(string s, out int r) 
@@ -319,7 +319,7 @@ namespace Pengu.VirtualMachine
 				}
 				bool IsPI8(string s, out int r) 
 				{ 
-					var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+)|0b[01]+\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+					var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+|0b[01]+|\.\w+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
 					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
 					return m.Success; 
 				}

@@ -247,7 +247,8 @@ namespace Pengu.Renderer
 
                 if (IsBufferDataDirty)
                 {
-                    UsedCharacters = (uint)fontStrings.Sum(fs => fs.Value?.Count(s => s != ' ' && s != '\n') ?? 0);
+                    UsedCharacters = (uint)fontStrings.Sum(fs =>
+                        (fs.Value?.Count(s => s != ' ' && s != '\n') ?? 0) + (fs.FillBackground ? 1 : 0));
 
                     if (MaxVertices < UsedVertices)
                     {
@@ -265,6 +266,34 @@ namespace Pengu.Renderer
                         {
                             var x = fs.Position.X;
                             var y = fs.Position.Y;
+
+                            // fill background?
+                            if (fs.FillBackground)
+                            {
+                                var (u0, v0, u1, v1) = Characters[' '];
+                                var aspect = (u1 - u0) / (v1 - v0);
+
+                                *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y, 0, 0),
+                                    fs.DefaultBackground, fs.DefaultForeground, false, fs.Offset);
+                                *vertexPtr++ = new FontVertex(new Vector4(x / context.extent.AspectRatio, y + fs.Size * fs.Height, 0, 0),
+                                    fs.DefaultBackground, fs.DefaultForeground, false, fs.Offset);
+                                *vertexPtr++ = new FontVertex(new Vector4((x + fs.Size * fs.Width * aspect) / context.extent.AspectRatio, y, 0, 0),
+                                    fs.DefaultBackground, fs.DefaultForeground, false, fs.Offset);
+                                *vertexPtr++ = new FontVertex(new Vector4((x + fs.Size * fs.Width * aspect) / context.extent.AspectRatio, y + fs.Size * fs.Height, 0, 0),
+                                    fs.DefaultBackground, fs.DefaultForeground, false, fs.Offset);
+
+                                *indexPtr++ = (ushort)(vertexIdx + 0);
+                                *indexPtr++ = (ushort)(vertexIdx + 1);
+                                *indexPtr++ = (ushort)(vertexIdx + 2);
+
+                                *indexPtr++ = (ushort)(vertexIdx + 2);
+                                *indexPtr++ = (ushort)(vertexIdx + 1);
+                                *indexPtr++ = (ushort)(vertexIdx + 3);
+
+                                vertexIdx += 4;
+                            }
+
+                            // draw each character
                             int charIndex = 0;
 
                             foreach (var ch in fs.Value)
@@ -321,7 +350,7 @@ namespace Pengu.Renderer
                         }
 
                     resultCommandBuffer = context.CopyBuffer(stagingVertexIndexBuffer, vertexIndexBuffer,
-                        MaxVertices * FontVertex.Size + MaxIndices * sizeof(ushort));
+                        MaxVertices * FontVertex.Size + UsedIndices * sizeof(ushort));
 
                     IsBufferDataDirty = false;
                 }
@@ -448,10 +477,11 @@ namespace Pengu.Renderer
             }
 
             public void Set(string value = null, FontColor? defaultBg = null, FontColor? defaultFg = null, Vector2? offset = null,
-                FontOverride[] overrides = null)
+                FontOverride[] overrides = null, bool? fillBackground = null)
             {
                 if ((value is null || value == Value) && (!defaultBg.HasValue || defaultBg == DefaultBackground) &&
                     (!defaultFg.HasValue || defaultFg == DefaultForeground) && (!offset.HasValue || offset == Offset) &&
+                    (!fillBackground.HasValue || fillBackground == FillBackground) &&
                     (overrides is null || (!(Overrides is null) && overrides.SequenceEqual(Overrides))))
                 {
                     return;
@@ -475,7 +505,7 @@ namespace Pengu.Renderer
                     (Width, Height) = (width, height);
                 }
 
-                font.IsCommandBufferDirty = Length != nonSpaceLengthNewValue;
+                font.IsCommandBufferDirty = Length != nonSpaceLengthNewValue || fillBackground.HasValue && FillBackground != fillBackground;
 
                 if (!(value is null))
                     (Value, Length) = (value, nonSpaceLengthNewValue);
@@ -483,6 +513,7 @@ namespace Pengu.Renderer
                 if (defaultFg.HasValue) DefaultForeground = defaultFg.Value;
                 if (!(overrides is null)) Overrides = overrides;
                 if (offset.HasValue) Offset = offset.Value;
+                if (fillBackground.HasValue) FillBackground = fillBackground.Value;
 
                 font.IsBufferDataDirty = true;
             }
@@ -494,6 +525,8 @@ namespace Pengu.Renderer
             public FontColor DefaultForeground { get; private set; }
 
             public FontOverride[] Overrides { get; private set; }
+
+            public bool FillBackground { get; private set; }
 
             public Vector2 Offset { get; private set; }
 

@@ -62,26 +62,27 @@ namespace Pengu.Renderer.UI
 
         protected override void FillFontString(bool first)
         {
-            FontString.Set((
-                "╔═══ PLAY ══╗\n" +
+            FontString.Set(
+                $"╔═══{VulkanContext.Font.PrintableSpace}PLAY{VulkanContext.Font.PrintableSpace}══╗\n" +
                 $"║ {Digits[0][0]} {Digits[1][0]} ║\n" +
                 $"║ {Digits[0][1]} {Digits[1][1]} ║\n" +
                 $"║ {Digits[0][2]} {Digits[1][2]} ║\n" +
                 $"║ {Digits[0][3]} {Digits[1][3]} ║\n" +
                 $"║ {Digits[0][4]} {Digits[1][4]} ║\n" +
-                "╚═══════════╝").Replace(' ', VulkanContext.Font.PrintableSpace));
+                "╚═══════════╝");
 
             if (first)
                 FontString.Set(null, VulkanContext.FontColor.BrightBlack, VulkanContext.FontColor.Black,
                     surface.CharacterToScreenSize(positionX, positionY, FontString),
                     new[]
                     {
+                        new FontOverride(4, 6, VulkanContext.FontColor.White, VulkanContext.FontColor.Black, false),
                         new FontOverride(16, 9, VulkanContext.FontColor.BrightBlack, fgDigitColor, false),
                         new FontOverride(30, 9, VulkanContext.FontColor.BrightBlack, fgDigitColor, false),
                         new FontOverride(44, 9, VulkanContext.FontColor.BrightBlack, fgDigitColor, false),
                         new FontOverride(58, 9, VulkanContext.FontColor.BrightBlack, fgDigitColor, false),
                         new FontOverride(72, 9, VulkanContext.FontColor.BrightBlack, fgDigitColor, false),
-                    });
+                    }, fillBackground: true);
         }
     }
 }

@@ -1,70 +1,84 @@
-﻿instruction         | bytes                 | description
+
+
+instruction         | bytes                 | description
 --------------------|-----------------------|--------------
 ORG                 | -                     | sets the starting point of the program (last 1-2 bytes)
 @addr               | -                     | continues the assembly at the given address
 .label              | -                     | marks the current assembly address with a label
 DB I8               | i8                    | writes the byte at the current assembly address
-NOP                 | 00                    |
-MOV REG, I8         | 01 reg i8             |
-MOV REG, REG        | 02 reg:4\|reg:4       |
-MOV REG, [I8]       | 03 reg i8             |
-MOV REG, [REG]      | 04 reg:4\|reg:4       |
-MOV [I8], I8        | 05 i8 i8              |
-MOV [I8], REG       | 06 i8 reg             |
-MOV [I8], [I8]      | 07 i8 i8              |
-MOV [I8], [REG]     | 08 i8 reg             |
-MOV [REG], I8       | 09 reg i8             |
-MOV [REG], REG      | 0a reg:4\|reg:4       |
-MOV [REG], [I8]     | 0b reg i8             |
-MOV [REG], [REG]    | 0c reg:4\|reg:4       |
-ADDI REG, I8        | 0d reg i8             |
-ADDI REG, REG       | 0e reg:4\|reg:4       |
-SUBI REG, I8        | 0f reg i8             |
-SUBI REG, REG       | 10 reg:4\|reg:4       |
-MULI REG, I8        | 11 reg i8             |
-MULI REG, REG       | 12 reg:4\|reg:4       |
-INT I8              | 13 i8                 |
-INT reg             | 14 i8                 |
-DIVI REG, I8        | 15 reg i8             |
-DIVI REG, REG       | 16 reg:4\|reg:4       |
-MODI REG, I8        | 17 reg i8             |
-MODI REG, REG       | 18 reg:4\|reg:4       |
-JMP I8              | 19 i8                 |
-JMP $ + I8          | 1a i8                 |
-JMP REG             | 1b i8                 |
-JMP $ + REG         | 1c i8                 |
-CMP I8, I8          | 1d i8 i8              | sets the compare flag to -1 / 0 / 1
-CMP REG, I8         | 1e reg i8             | sets the compare flag to -1 / 0 / 1
-CMP REG, REG        | 1f reg:4\|reg:4       | sets the compare flag to -1 / 0 / 1
-JL I8               | 20 i8                 |
-JL $ + I8           | 21 i8                 |
-JL REG              | 22 reg                |
-JL $ + REG          | 23 reg                |
-JLE I8              | 24 i8                 |
-JLE $ + I8          | 25 i8                 |
-JLE REG             | 26 reg                |
-JLE $ + REG         | 27 reg                |
-JG I8               | 28 i8                 |
-JG $ + I8           | 29 i8                 |
-JG REG              | 2a reg                |
-JG $ + REG          | 2b reg                |
-JGE I8              | 2c i8                 |
-JGE $ + I8          | 2d i8                 |
-JGE REG             | 2e reg                |
-JGE $ + REG         | 2f reg                |
-JE I8               | 30 i8                 |
-JE $ + I8           | 31 i8                 |
-JE REG              | 32 reg                |
-JE $ + REG          | 33 reg                |
-JNE I8              | 34 i8                 |
-JNE $ + I8          | 35 i8                 |
-JNE REG             | 36 reg                |
-JNE $ + REG         | 37 reg                |
-PUSH I8             | 38 i8                 |
-PUSH REG            | 39 reg                |
-POP REG             | 3a reg                |
-CALL I8             | 3b i8                 |
-CALL $ + I8         | 3c i8                 |
-CALL REG            | 3d reg                |
-CALL $ + REG        | 3e reg                |
-RET                 | 3f                    |
+ NOP | 00  |
+ MOV REG I8 | 01 reg:4\|reg:4  |
+ MOV REG REG | 02 reg:4\|reg:4  |
+ MOV REG PI8 | 03 reg:4\|reg:4  |
+ MOV REG PREG | 04 reg:4\|reg:4  |
+ MOV PI8 I8 | 05 i8 i8  |
+ MOV PI8 REG | 06 i8 reg  |
+ MOV PI8 PI8 | 07 i8 i8  |
+ MOV PI8 PREG | 08 i8 reg  |
+ MOV PREG I8 | 09 reg:4\|reg:4  |
+ MOV PREG REG | 0a reg:4\|reg:4  |
+ MOV PREG PI8 | 0b reg:4\|reg:4  |
+ MOV PREG PREG | 0c reg:4\|reg:4  |
+ INT I8 | 0d i8  |
+ INT REG | 0e reg  |
+ JMP I8 | 0f i8  |
+ JMP $+I8 | 10 i8  |
+ JMP REG | 11 reg  |
+ JMP $+REG | 12 reg  |
+ CMP I8 I8 | 13 i8 i8  |
+ CMP REG I8 | 14 reg:4\|reg:4  |
+ CMP REG REG | 15 reg:4\|reg:4  |
+ JL I8 | 16 i8  |
+ JL $+I8 | 17 i8  |
+ JL REG | 18 reg  |
+ JL $+REG | 19 reg  |
+ JLE I8 | 1a i8  |
+ JLE $+I8 | 1b i8  |
+ JLE REG | 1c reg  |
+ JLE $+REG | 1d reg  |
+ JG I8 | 1e i8  |
+ JG $+I8 | 1f i8  |
+ JG REG | 20 reg  |
+ JG $+REG | 21 reg  |
+ JGE I8 | 22 i8  |
+ JGE $+I8 | 23 i8  |
+ JGE REG | 24 reg  |
+ JGE $+REG | 25 reg  |
+ JE I8 | 26 i8  |
+ JE $+I8 | 27 i8  |
+ JE REG | 28 reg  |
+ JE $+REG | 29 reg  |
+ JNE I8 | 2a i8  |
+ JNE $+I8 | 2b i8  |
+ JNE REG | 2c reg  |
+ JNE $+REG | 2d reg  |
+ PUSH I8 | 2e i8  |
+ PUSH REG | 2f reg  |
+ POP REG | 30 reg  |
+ CALL I8 | 31 i8  |
+ CALL $+I8 | 32 i8  |
+ CALL REG | 33 reg  |
+ CALL $+REG | 34 reg  |
+ RET | 35  |
+ SHL REG REG | 36 reg:4\|reg:4  |
+ SHL REG I8 | 37 reg:4\|reg:4  |
+ SHR REG REG | 38 reg:4\|reg:4  |
+ SHR REG I8 | 39 reg:4\|reg:4  |
+ OR REG REG | 3a reg:4\|reg:4  |
+ OR REG I8 | 3b reg:4\|reg:4  |
+ AND REG REG | 3c reg:4\|reg:4  |
+ AND REG I8 | 3d reg:4\|reg:4  |
+ XOR REG REG | 3e reg:4\|reg:4  |
+ XOR REG I8 | 3f reg:4\|reg:4  |
+ ADDI REG REG | 40 reg:4\|reg:4  |
+ ADDI REG I8 | 41 reg:4\|reg:4  |
+ SUBI REG REG | 42 reg:4\|reg:4  |
+ SUBI REG I8 | 43 reg:4\|reg:4  |
+ MULI REG REG | 44 reg:4\|reg:4  |
+ MULI REG I8 | 45 reg:4\|reg:4  |
+ DIVI REG REG | 46 reg:4\|reg:4  |
+ DIVI REG I8 | 47 reg:4\|reg:4  |
+ MODI REG REG | 48 reg:4\|reg:4  |
+ MODI REG I8 | 49 reg:4\|reg:4  |
+ NOT REG | 4a reg  |
+

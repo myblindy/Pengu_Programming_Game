@@ -25,7 +25,7 @@ namespace Pengu.Renderer.UI
 
             (positionX, positionY) = (8, 2);
 
-            fontString = context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -1), 0.055f);
+            FontString = context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -1), 0.055f);
         }
 
         protected override void FillFontString(bool first)
@@ -68,7 +68,7 @@ namespace Pengu.Renderer.UI
             var statusLine = " NEXT ASM: " + disasmNext.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7 - regFlags.Length) + regFlags;
 
             var disasmSelected = InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---";
-            fontString.Set(
+            FontString.Set(
                 "╔" + frameForAddress + "╤" + new string('═', titleHalfOffset - 4 - 1 - addressSizeBytes * 2 - 2) +
                     VulkanContext.Font.PrintableSpace + title + VulkanContext.Font.PrintableSpace + new string('═', titleHalfOffset) + "╗\n" +
                 "║" + new string(' ', addressSizeBytes * 2 + 2) + "│" + string.Concat(Enumerable.Range(0, editorLineBytes).Select(idx => $" {idx:X2}")) + " ║\n" +
@@ -79,8 +79,11 @@ namespace Pengu.Renderer.UI
                 "║" + statusLine + "║\n" +
                 "║ SEL  ASM: " + disasmSelected.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7) + "║\n" +
                 "╚" + new string('═', addressSizeBytes * 2 + 2 + 1 + editorLineBytes * 3 + 1) + "╝",
-                VulkanContext.FontColor.Black, VulkanContext.FontColor.BrightGreen, surface.CharacterToScreenSize(positionX, positionY, fontString),
-                overrides);
+                overrides: overrides);
+
+            if (first)
+                FontString.Set(defaultBg: VulkanContext.FontColor.Black, defaultFg: VulkanContext.FontColor.BrightGreen,
+                    offset: surface.CharacterToScreenSize(positionX, positionY, FontString));
         }
 
         public override bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers)

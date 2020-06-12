@@ -348,10 +348,21 @@ namespace Pengu.Renderer
             {
                 var fs = new FontString(this, pos, size);
                 fontStrings.Add(fs);
+                IsBufferDataDirty = true;
                 return fs;
             }
 
             public void FreeString(FontString fs) => fontStrings.Remove(fs);
+
+            internal void MoveStringToTop(FontString fontString)
+            {
+                if (fontStrings[^1] != fontString)
+                {
+                    fontStrings.Remove(fontString);
+                    fontStrings.Add(fontString);
+                    IsBufferDataDirty = true;
+                }
+            }
 
             public void UpdateLogic(TimeSpan elapsedTime) => totalElapsedTime += elapsedTime;
 

@@ -9,9 +9,10 @@ namespace Pengu.Renderer.UI
     {
         protected readonly VulkanContext context;
         protected readonly VulkanContext.GameSurface surface;
-        protected VulkanContext.FontString fontString;
-        protected bool fontStringDirty = true;
         protected int positionX, positionY;
+
+        public VulkanContext.FontString FontString { get; protected set; }
+        protected bool fontStringDirty = true;
 
         bool dragging;
 
@@ -38,12 +39,14 @@ namespace Pengu.Renderer.UI
 
         public virtual bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers)
         {
-            if (newMouseCharacterPosition.X < positionX || newMouseCharacterPosition.Y < positionY ||
-                newMouseCharacterPosition.X > positionX + fontString.Width || newMouseCharacterPosition.Y > positionY + fontString.Height)
+            var newPos = new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition;
+            if (newMouseCharacterPosition.X < newPos.X || newMouseCharacterPosition.Y < newPos.Y ||
+                newMouseCharacterPosition.X > newPos.X + FontString.Width || newMouseCharacterPosition.Y > newPos.Y + FontString.Height)
             {
                 return false;
             }
 
+            surface.FocusedWindow = this;
 
             if (button == MouseButton.Left && action == InputState.Press)
                 dragging = true;
@@ -60,13 +63,13 @@ namespace Pengu.Renderer.UI
 
         public virtual bool ProcessMouseMove(double x, double y)
         {
-            newMouseCharacterPosition = surface.ScreenToCharacterSize(new Vector2((float)x, (float)y), fontString);
+            newMouseCharacterPosition = surface.ScreenToCharacterSize(new Vector2((float)x, (float)y), FontString);
 
-            if (dragging)
+            if (dragging && surface.FocusedWindow == this)
             {
                 // update the offset
-                fontString.Set(offset: surface.CharacterToScreenSize(
-                    new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition, fontString));
+                FontString.Set(offset: surface.CharacterToScreenSize(
+                    new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition, FontString));
             }
             else
                 lastMouseCharacterPosition = newMouseCharacterPosition;

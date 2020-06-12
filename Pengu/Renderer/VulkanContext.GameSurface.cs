@@ -15,7 +15,23 @@ namespace Pengu.Renderer
         internal class GameSurface : IRenderableModule
         {
             readonly List<BaseWindow> Windows = new List<BaseWindow>();
-            BaseWindow FocusedWindow;
+
+            BaseWindow focusedWindow;
+            internal BaseWindow FocusedWindow
+            {
+                get => focusedWindow;
+                set => MoveWindowToTop(focusedWindow = value);
+            }
+
+            private void MoveWindowToTop(BaseWindow window)
+            {
+                if (Windows[0] != window)
+                {
+                    context.monospaceFont.MoveStringToTop(window.FontString);
+                    Windows.Remove(window);
+                    Windows.Insert(0, window);
+                }
+            }
 
             readonly VulkanContext context;
             readonly Vector2 characterSize;
@@ -80,10 +96,9 @@ namespace Pengu.Renderer
 
             private void AddNewWindow(BaseWindow window)
             {
-                if (Windows.Count == 0)
-                    FocusedWindow = window;
-
                 Windows.Insert(0, window);
+                if (Windows.Count == 1)
+                    FocusedWindow = window;
             }
 
             public void AddHexEditorWindow(VM vm) => AddNewWindow(new HexEditorWindow(context, this, vm));

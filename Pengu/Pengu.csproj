@@ -78,6 +78,11 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Instructions.tt</DependentUpon>
     </Compile>
+    <None Update="VirtualMachine\Assembler Instructions.tt">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Instructions.tt</DependentUpon>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

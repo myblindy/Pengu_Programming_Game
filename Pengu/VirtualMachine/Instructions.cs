@@ -1,5 +1,4 @@
 ﻿
-
 using System;
 using System.IO;
 using System.Linq;
@@ -24,18 +23,8 @@ namespace Pengu.VirtualMachine
 					Mov_PReg_Reg, 
 					Mov_PReg_PI8, 
 					Mov_PReg_PReg, 
-					AddI_Reg_I8, 
-					AddI_Reg_Reg, 
-					SubI_Reg_I8, 
-					SubI_Reg_Reg, 
-					MulI_Reg_I8, 
-					MulI_Reg_Reg, 
 					Int_I8, 
 					Int_Reg, 
-					DivI_Reg_I8, 
-					DivI_Reg_Reg, 
-					ModI_Reg_I8, 
-					ModI_Reg_Reg, 
 					Jmp_I8, 
 					Jmp_RI8, 
 					Jmp_Reg, 
@@ -75,6 +64,27 @@ namespace Pengu.VirtualMachine
 					Call_Reg, 
 					Call_RReg, 
 					Ret, 
+					Shl_Reg_Reg, 
+					Shl_Reg_I8, 
+					Shr_Reg_Reg, 
+					Shr_Reg_I8, 
+					Or_Reg_Reg, 
+					Or_Reg_I8, 
+					And_Reg_Reg, 
+					And_Reg_I8, 
+					Xor_Reg_Reg, 
+					Xor_Reg_I8, 
+					AddI_Reg_Reg, 
+					AddI_Reg_I8, 
+					SubI_Reg_Reg, 
+					SubI_Reg_I8, 
+					MulI_Reg_Reg, 
+					MulI_Reg_I8, 
+					DivI_Reg_Reg, 
+					DivI_Reg_I8, 
+					ModI_Reg_Reg, 
+					ModI_Reg_I8, 
+					Not_Reg, 
 			}
 
 	[System.CodeDom.Compiler.GeneratedCode("Instructions.tt", null)]
@@ -162,45 +172,6 @@ namespace Pengu.VirtualMachine
 					},
 									(vm, m) =>
 					{
-						// AddI_Reg_I8
-						vm.Registers[vm.Memory[m]] += vm.Memory[m + 1]; return (ushort)(m + 2);
-					},
-									(vm, m) =>
-					{
-						// AddI_Reg_Reg
-						
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] += vm.Registers[r1];
-            return (ushort)(m + 1);
-					},
-									(vm, m) =>
-					{
-						// SubI_Reg_I8
-						vm.Registers[vm.Memory[m]] -= vm.Memory[m + 1]; return (ushort)(m + 2);
-					},
-									(vm, m) =>
-					{
-						// SubI_Reg_Reg
-						
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] -= vm.Registers[r1];
-            return (ushort)(m + 1);
-					},
-									(vm, m) =>
-					{
-						// MulI_Reg_I8
-						vm.Registers[vm.Memory[m]] *= vm.Memory[m + 1]; return (ushort)(m + 2);
-					},
-									(vm, m) =>
-					{
-						// MulI_Reg_Reg
-						
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] *= vm.Registers[r1];
-            return (ushort)(m + 1);
-					},
-									(vm, m) =>
-					{
 						// Int_I8
 						vm.CallInterrupt(vm.Memory[m]); return (ushort)(m + 1);
 					},
@@ -208,32 +179,6 @@ namespace Pengu.VirtualMachine
 					{
 						// Int_Reg
 						vm.CallInterrupt(vm.Registers[vm.Memory[m]]); return (ushort)(m + 1);
-					},
-									(vm, m) =>
-					{
-						// DivI_Reg_I8
-						vm.Registers[vm.Memory[m]] /= vm.Memory[m + 1]; return (ushort)(m + 2);
-					},
-									(vm, m) =>
-					{
-						// DivI_Reg_Reg
-						
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] /= vm.Registers[r1];
-            return (ushort)(m + 1);
-					},
-									(vm, m) =>
-					{
-						// ModI_Reg_I8
-						vm.Registers[vm.Memory[m]] %= vm.Memory[m + 1]; return (ushort)(m + 2);
-					},
-									(vm, m) =>
-					{
-						// ModI_Reg_Reg
-						
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] %= vm.Registers[r1];
-            return (ushort)(m + 1);
 					},
 									(vm, m) =>
 					{
@@ -454,6 +399,113 @@ namespace Pengu.VirtualMachine
 						// Ret
 						return vm.Memory[++vm.StackRegister];
 					},
+									(vm, m) =>
+					{
+						// Shl_Reg_Reg
+						I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] <<= vm.Registers[r1]; return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// Shl_Reg_I8
+						vm.Registers[vm.Memory[m]] <<= vm.Memory[m + 1]; return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// Shr_Reg_Reg
+						I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] >>= vm.Registers[r1]; return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// Shr_Reg_I8
+						vm.Registers[vm.Memory[m]] >>= vm.Memory[m + 1]; return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// Or_Reg_Reg
+						I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] |= vm.Registers[r1]; return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// Or_Reg_I8
+						vm.Registers[vm.Memory[m]] |= vm.Memory[m + 1]; return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// And_Reg_Reg
+						I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] &= vm.Registers[r1]; return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// And_Reg_I8
+						vm.Registers[vm.Memory[m]] &= vm.Memory[m + 1]; return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// Xor_Reg_Reg
+						I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] ^= vm.Registers[r1]; return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// Xor_Reg_I8
+						vm.Registers[vm.Memory[m]] ^= vm.Memory[m + 1]; return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// AddI_Reg_Reg
+						I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] += vm.Registers[r1]; return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// AddI_Reg_I8
+						vm.Registers[vm.Memory[m]] += vm.Memory[m + 1]; return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// SubI_Reg_Reg
+						I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] -= vm.Registers[r1]; return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// SubI_Reg_I8
+						vm.Registers[vm.Memory[m]] -= vm.Memory[m + 1]; return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// MulI_Reg_Reg
+						I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] *= vm.Registers[r1]; return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// MulI_Reg_I8
+						vm.Registers[vm.Memory[m]] *= vm.Memory[m + 1]; return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// DivI_Reg_Reg
+						I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] /= vm.Registers[r1]; return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// DivI_Reg_I8
+						vm.Registers[vm.Memory[m]] /= vm.Memory[m + 1]; return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// ModI_Reg_Reg
+						I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] %= vm.Registers[r1]; return (ushort)(m + 1);
+					},
+									(vm, m) =>
+					{
+						// ModI_Reg_I8
+						vm.Registers[vm.Memory[m]] %= vm.Memory[m + 1]; return (ushort)(m + 2);
+					},
+									(vm, m) =>
+					{
+						// Not_Reg
+						vm.Registers[vm.Memory[m]] = ~vm.Registers[vm.Memory[m]] & 
+			(vm.Type switch { VMType.BitLength8 => 0xFF, VMType.BitLength16 => 0xFFFF, _ => throw new InvalidOperationException() });
+		  return (ushort)(m + 1);
+					},
 							};
 
 		static readonly Func<Memory<byte>, (string result, int size)>[] InstructionDecompilation = 
@@ -555,48 +607,6 @@ namespace Pengu.VirtualMachine
 						ReadOnlySpan<byte> s = m.Span;
 
 						
-						return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-					},
-									m =>
-					{
-						ReadOnlySpan<byte> s = m.Span;
-
-						
-						return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-					},
-									m =>
-					{
-						ReadOnlySpan<byte> s = m.Span;
-
-						
-						return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-					},
-									m =>
-					{
-						ReadOnlySpan<byte> s = m.Span;
-
-						
-						return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-					},
-									m =>
-					{
-						ReadOnlySpan<byte> s = m.Span;
-
-						
-						return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-					},
-									m =>
-					{
-						ReadOnlySpan<byte> s = m.Span;
-
-						
-						return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-					},
-									m =>
-					{
-						ReadOnlySpan<byte> s = m.Span;
-
-						
 						return s.Length >= 1 ? ($"INT 0x{s[0]:X2} ", 2) : (null, 0);
 					},
 									m =>
@@ -605,34 +615,6 @@ namespace Pengu.VirtualMachine
 
 						
 						return s.Length >= 1 ? ($"INT r{s[0] & 0xF} ", 2) : (null, 0);
-					},
-									m =>
-					{
-						ReadOnlySpan<byte> s = m.Span;
-
-						
-						return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-					},
-									m =>
-					{
-						ReadOnlySpan<byte> s = m.Span;
-
-						
-						return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
-					},
-									m =>
-					{
-						ReadOnlySpan<byte> s = m.Span;
-
-						
-						return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
-					},
-									m =>
-					{
-						ReadOnlySpan<byte> s = m.Span;
-
-						
-						return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
 					},
 									m =>
 					{
@@ -907,6 +889,153 @@ namespace Pengu.VirtualMachine
 						
 						return s.Length >= 0 ? ($"RET ", 1) : (null, 0);
 					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"SHL r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"SHL r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"SHR r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"SHR r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"OR r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"OR r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"AND r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"AND r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"XOR r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"XOR r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"ADDI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"SUBI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"MULI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"DIVI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} r{(s[0] & 0xF0) >> 4} ", 2) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 2 ? ($"MODI r{s[0] & 0xF} 0x{s[1]:X2} ", 3) : (null, 0);
+					},
+									m =>
+					{
+						ReadOnlySpan<byte> s = m.Span;
+
+						
+						return s.Length >= 1 ? ($"NOT r{s[0] & 0xF} ", 2) : (null, 0);
+					},
 							};
 
 		public static string Disassemble(Memory<byte> m, out int size)
@@ -1152,60 +1281,6 @@ namespace Pengu.VirtualMachine
 																						continue;
 						}
 											}
-									if(tokens[0].Equals("AddI", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.AddI_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.AddI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("SubI", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.SubI_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.SubI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("MulI", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.MulI_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.MulI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-											}
 									if(tokens[0].Equals("Int", StringComparison.OrdinalIgnoreCase))
 					{
 												if(tokens.Count == 2
@@ -1221,42 +1296,6 @@ namespace Pengu.VirtualMachine
 							vm.Memory[memidx++] = (byte)Instruction.Int_Reg;
 															vm.Memory[memidx++] = (byte)i0;
 														continue;
-						}
-											}
-									if(tokens[0].Equals("DivI", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.DivI_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.DivI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("ModI", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.ModI_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.ModI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
 						}
 											}
 									if(tokens[0].Equals("Jmp", StringComparison.OrdinalIgnoreCase))
@@ -1569,6 +1608,196 @@ namespace Pengu.VirtualMachine
 														continue;
 						}
 											}
+									if(tokens[0].Equals("Shl", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Shl_Reg_Reg;
+																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Shl_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+											}
+									if(tokens[0].Equals("Shr", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Shr_Reg_Reg;
+																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Shr_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+											}
+									if(tokens[0].Equals("Or", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Or_Reg_Reg;
+																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Or_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+											}
+									if(tokens[0].Equals("And", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.And_Reg_Reg;
+																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.And_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+											}
+									if(tokens[0].Equals("Xor", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Xor_Reg_Reg;
+																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Xor_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+											}
+									if(tokens[0].Equals("AddI", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.AddI_Reg_Reg;
+																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.AddI_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+											}
+									if(tokens[0].Equals("SubI", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.SubI_Reg_Reg;
+																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.SubI_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+											}
+									if(tokens[0].Equals("MulI", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.MulI_Reg_Reg;
+																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.MulI_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+											}
+									if(tokens[0].Equals("DivI", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.DivI_Reg_Reg;
+																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.DivI_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+											}
+									if(tokens[0].Equals("ModI", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.ModI_Reg_Reg;
+																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																						continue;
+						}
+												if(tokens.Count == 3
+							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.ModI_Reg_I8;
+																								vm.Memory[memidx++] = (byte)i0;
+									vm.Memory[memidx++] = (byte)i1;
+																						continue;
+						}
+											}
+									if(tokens[0].Equals("Not", StringComparison.OrdinalIgnoreCase))
+					{
+												if(tokens.Count == 2
+							 && IsReg(tokens[1], out i0) )
+						{
+							vm.Memory[memidx++] = (byte)Instruction.Not_Reg;
+															vm.Memory[memidx++] = (byte)i0;
+														continue;
+						}
+											}
 				
 				throw new AssemblerException(lineidx - 1, line);
             }
@@ -1596,3 +1825,4 @@ namespace Pengu.VirtualMachine
 		}
 	}
 }
+

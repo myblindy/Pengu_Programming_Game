@@ -1,12 +1,13 @@
-﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
 <#@ assembly name="System.Core" #>
 <#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.IO" #>
 <#@ output extension=".cs" #>
 
 <#
-	var instructions = new List<(string name, string instruction)>
+	instructions = new List<(string name, string instruction)>
 	{
 		("Nop", @"return m;"),
 		("Mov_Reg_I8", @"vm.Registers[vm.Memory[m]] = vm.Memory[m + 1]; return (ushort)(m + 2);"),
@@ -33,33 +34,8 @@
 			I8ToI4I4(vm.Memory[m], out var r0, out var r1);
 			vm.Memory[vm.Registers[r0]] = vm.Memory[vm.Registers[r1]];
 			return (ushort)(m + 1);"),
-		("AddI_Reg_I8", @"vm.Registers[vm.Memory[m]] += vm.Memory[m + 1]; return (ushort)(m + 2);"),
-		("AddI_Reg_Reg", @"
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] += vm.Registers[r1];
-            return (ushort)(m + 1);"),
-		("SubI_Reg_I8", @"vm.Registers[vm.Memory[m]] -= vm.Memory[m + 1]; return (ushort)(m + 2);"),
-		("SubI_Reg_Reg", @"
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] -= vm.Registers[r1];
-            return (ushort)(m + 1);"),
-		("MulI_Reg_I8", @"vm.Registers[vm.Memory[m]] *= vm.Memory[m + 1]; return (ushort)(m + 2);"),
-		("MulI_Reg_Reg", @"
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] *= vm.Registers[r1];
-            return (ushort)(m + 1);"),
 		("Int_I8", @"vm.CallInterrupt(vm.Memory[m]); return (ushort)(m + 1);"),
 		("Int_Reg", @"vm.CallInterrupt(vm.Registers[vm.Memory[m]]); return (ushort)(m + 1);"),
-		("DivI_Reg_I8", @"vm.Registers[vm.Memory[m]] /= vm.Memory[m + 1]; return (ushort)(m + 2);"),
-		("DivI_Reg_Reg", @"
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] /= vm.Registers[r1];
-            return (ushort)(m + 1);"),
-		("ModI_Reg_I8", @"vm.Registers[vm.Memory[m]] %= vm.Memory[m + 1]; return (ushort)(m + 2);"),
-		("ModI_Reg_Reg", @"
-            I8ToI4I4(vm.Memory[m], out var r0, out var r1);
-            vm.Registers[r0] %= vm.Registers[r1];
-            return (ushort)(m + 1);"),
 		("Jmp_I8", @"return vm.Memory[m];"),
 		("Jmp_RI8", @"return (ushort)(m + 1 + vm.Memory[m]);"),
 		("Jmp_Reg", @"return (ushort)(vm.Registers[vm.Memory[m]]);"),
@@ -91,6 +67,7 @@
 						default: throw new InvalidOperationException($""Unexpected VM type enountered: {{vm.Type}}."");
 					}}
 					return (ushort)(m + 1);"));
+
 		instructions.Add(
 			($"{name}_Reg", $@"
 				switch(vm.Type)
@@ -113,6 +90,31 @@
 		("Call_RReg", @"vm.Memory[vm.StackRegister--] = (byte)(m + 1); return (ushort)(m + 1 + vm.Registers[vm.Memory[m]]);"),
 		("Ret", @"return vm.Memory[++vm.StackRegister];"),
 	});
+
+	foreach(var (name, op) in new[] { ("Shl", "<<"), ("Shr", ">>"), ("Or", "|"), ("And", "&"), ("Xor", "^"), ("AddI", "+"), ("SubI", "-"), ("MulI", "*"), ("DivI", "/"), ("ModI", "%") })
+		instructions.AddRange(new[]
+		{
+			($"{name}_Reg_Reg", @$"I8ToI4I4(vm.Memory[m], out var r0, out var r1); vm.Registers[r0] {op}= vm.Registers[r1]; return (ushort)(m + 1);"),
+			($"{name}_Reg_I8", @$"vm.Registers[vm.Memory[m]] {op}= vm.Memory[m + 1]; return (ushort)(m + 2);"),
+		});
+
+	instructions.Add(("Not_Reg", 
+		@"vm.Registers[vm.Memory[m]] = ~vm.Registers[vm.Memory[m]] & 
+			(vm.Type switch { VMType.BitLength8 => 0xFF, VMType.BitLength16 => 0xFFFF, _ => throw new InvalidOperationException() });
+		  return (ushort)(m + 1);"));
+#>
+
+instruction         | bytes                 | description
+--------------------|-----------------------|--------------
+ORG                 | -                     | sets the starting point of the program (last 1-2 bytes)
+@addr               | -                     | continues the assembly at the given address
+.label              | -                     | marks the current assembly address with a label
+DB I8               | i8                    | writes the byte at the current assembly address
+<# foreach(var (name, instr) in instructions) { #> <#= ToAsmInstruction(name) #> | <#= ToAsmBytes(name) #> |
+<# } #>
+
+<#  // end of .tt file and reset for the .cs file
+	SaveOutput("Assembler Instructions.md");
 #>
 
 using System;
@@ -429,3 +431,46 @@ namespace Pengu.VirtualMachine
 		}
 	}
 }
+
+<#+
+	List<(string name, string instruction)> instructions;
+
+	private string ToAsmInstruction(string name)
+	{
+		return string.Join(" ", name.Split('_').Select(w => (w == "RI8" ? "$+I8" : w == "RReg" ? "$+REG" : w).ToUpper()));
+	}
+
+	private string ToAsmBytes(string name)
+	{
+		string result = null;
+
+		var idx = instructions.FindIndex(w => w.name == name);
+		result += idx.ToString("x2") + " ";
+
+		var parts = name.Split('_');
+		for(int i = 1; i < parts.Length; ++i)
+		{
+			if(parts[i].Contains("Reg") && parts.Length > i + 1)
+			{
+				result += "reg:4\\|reg:4 ";
+				++i;
+			}
+			else if(parts[i].Contains("Reg"))
+				result += "reg ";
+			else if(parts[i].Contains("I8"))
+				result += "i8 ";
+			else
+				throw new InvalidOperationException();
+		}
+
+		return result;
+	}
+
+	private void SaveOutput(string outputFileName) 
+	{
+		string templateDirectory = Path.GetDirectoryName(Host.TemplateFile);
+		string outputFilePath = Path.Combine(templateDirectory, outputFileName);
+		File.WriteAllText(outputFilePath, this.GenerationEnvironment.ToString()); 
+		this.GenerationEnvironment.Remove(0, this.GenerationEnvironment.Length);
+	}
+#>

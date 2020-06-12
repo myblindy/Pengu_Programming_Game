@@ -1,5 +1,5 @@
 ﻿// define a grammar called Hello
-grammar b;
+grammar BLanguageGrammar;
 
 r   : 'hello' ID;
 ID  : [a-z]+ ;

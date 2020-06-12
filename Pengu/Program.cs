@@ -1,5 +1,5 @@
 ﻿using Antlr4.Runtime;
-using foo;
+using Pengu.Grammar;
 using Pengu.Renderer;
 using Pengu.VirtualMachine;
 using System;
@@ -31,14 +31,13 @@ namespace Pengu
 #endif
 
             var input = new AntlrInputStream("hello world");
-            var lexer = new bLexer(input);
+            var lexer = new BLanguageGrammarLexer(input);
             var tokens = new CommonTokenStream(lexer);
-            var parser = new bParser(tokens);
+            var parser = new BLanguageGrammarParser(tokens);
             var listener = new ErrorListener<IToken>();
             parser.AddErrorListener(listener);
             var tree = parser.r();
             Console.WriteLine(listener.had_error ? "Didn't work" : "Worked");
-
 
             var vm = new VM(VMType.BitLength8, registers: 1, memory: 60);
 

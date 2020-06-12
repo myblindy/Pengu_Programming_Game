@@ -95,4 +95,18 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Antlr4 Include="Grammar\b.g4">
+      <Listener>false</Listener>
+      <Visitor>false</Visitor>
+      <GAtn>true</GAtn>
+      <Package>foo</Package>
+      <Error>true</Error>
+    </Antlr4>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.8.0" />
+    <PackageReference Include="Antlr4BuildTasks" Version="3.0" />
+  </ItemGroup>
+
 </Project>

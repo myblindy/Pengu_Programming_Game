@@ -1,13 +1,27 @@
-﻿using Pengu.Renderer;
+﻿using Antlr4.Runtime;
+using foo;
+using Pengu.Renderer;
 using Pengu.VirtualMachine;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 
 namespace Pengu
 {
     class Program
     {
+        public class ErrorListener<S> : ConsoleErrorListener<S>
+        {
+            public bool had_error = false;
+
+            public override void SyntaxError(TextWriter output, IRecognizer recognizer, S offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
+            {
+                had_error = true;
+                base.SyntaxError(output, recognizer, offendingSymbol, line, charPositionInLine, msg, e);
+            }
+        }
+
         static void Main(string[] _)
         {
 #if DEBUG 
@@ -15,6 +29,16 @@ namespace Pengu
 #else
             const bool debug = false;
 #endif
+
+            var input = new AntlrInputStream("hello world");
+            var lexer = new bLexer(input);
+            var tokens = new CommonTokenStream(lexer);
+            var parser = new bParser(tokens);
+            var listener = new ErrorListener<IToken>();
+            parser.AddErrorListener(listener);
+            var tree = parser.r();
+            Console.WriteLine(listener.had_error ? "Didn't work" : "Worked");
+
 
             var vm = new VM(VMType.BitLength8, registers: 1, memory: 60);
 

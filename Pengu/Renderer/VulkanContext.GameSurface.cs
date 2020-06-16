@@ -27,7 +27,7 @@ namespace Pengu.Renderer
             {
                 if (Windows[0] != window)
                 {
-                    context.monospaceFont.MoveStringToTop(window.FontString);
+                    context.monospaceFont.MoveStringToTop(window.ChromeFontString);
                     Windows.Remove(window);
                     Windows.Insert(0, window);
                 }

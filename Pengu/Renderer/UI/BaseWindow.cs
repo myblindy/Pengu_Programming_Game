@@ -1,6 +1,8 @@
 ﻿using GLFW;
 using SharpVk;
+using SixLabors.ImageSharp.Advanced;
 using System;
+using System.Linq;
 using System.Numerics;
 
 namespace Pengu.Renderer.UI
@@ -11,28 +13,65 @@ namespace Pengu.Renderer.UI
         protected readonly VulkanContext.GameSurface surface;
         protected int positionX, positionY;
 
-        public VulkanContext.FontString FontString { get; protected set; }
-        protected bool fontStringDirty = true;
+        public VulkanContext.FontString ChromeFontString { get; private set; }
+        private bool chromeFontStringDirty = true;
+
+        protected string ChromeTitle;
+        protected VulkanContext.FontColor ChromeBackground = VulkanContext.FontColor.Black, ChromeForeground = VulkanContext.FontColor.White;
+
+        public VulkanContext.FontString ContentFontString { get; protected set; }
+        protected bool contentFontStringDirty = true;
 
         bool dragging;
 
         Vector2 lastMouseCharacterPosition, newMouseCharacterPosition;
 
-        public BaseWindow(VulkanContext context, VulkanContext.GameSurface surface) =>
+        protected VulkanContext.FontString AllocateWindowFontString() =>
+             context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -1), 0.055f);
+
+        public BaseWindow(VulkanContext context, VulkanContext.GameSurface surface)
+        {
             (this.context, this.surface) = (context, surface);
 
-        protected abstract void FillFontString(bool first);
+            ChromeFontString = AllocateWindowFontString();
+        }
+
+        protected abstract void FillContentFontString(bool first);
 
         bool firstFillFontString = true;
         public virtual CommandBuffer[] PreRender(uint nextImage)
         {
-            if (fontStringDirty)
+            if (chromeFontStringDirty || contentFontStringDirty)
             {
-                FillFontString(firstFillFontString);
-                firstFillFontString = fontStringDirty = false;
+                FillContentFontString(firstFillFontString);
+                if (firstFillFontString)
+                {
+                    ContentFontString.Changed += () => FillChromeFontString(false);
+                    FillChromeFontString(true);
+                }
+
+                firstFillFontString = chromeFontStringDirty = contentFontStringDirty = false;
             }
 
             return Array.Empty<CommandBuffer>();
+        }
+
+        private void FillChromeFontString(bool first)
+        {
+            var titleHalfOffset = (ContentFontString.Width - ChromeTitle.Length - 2) / 2;
+            var titleHalfOffsetExtra = (ContentFontString.Width - ChromeTitle.Length - 2) % 2;
+            var line = "║" + new string(' ', ContentFontString.Width) + "║\n";
+
+            ChromeFontString.Set(
+                "╔" + new string('═', titleHalfOffset + titleHalfOffsetExtra) +
+                    VulkanContext.Font.PrintableSpace + ChromeTitle.Replace(' ', VulkanContext.Font.PrintableSpace) + VulkanContext.Font.PrintableSpace +
+                    new string('═', titleHalfOffset) + "╗\n" +
+                string.Concat(Enumerable.Repeat(line, ContentFontString.Height)) +
+                "╚" + new string('═', ContentFontString.Width) + "╝");
+
+            if (first)
+                ChromeFontString.Set(defaultBg: ChromeBackground, defaultFg: ChromeForeground,
+                    offset: surface.CharacterToScreenSize(positionX - 1, positionY - 1, ChromeFontString), fillBackground: true);
         }
 
         public virtual bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers) => false;
@@ -41,7 +80,7 @@ namespace Pengu.Renderer.UI
         {
             var newPos = new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition;
             if (newMouseCharacterPosition.X < newPos.X || newMouseCharacterPosition.Y < newPos.Y ||
-                newMouseCharacterPosition.X > newPos.X + FontString.Width || newMouseCharacterPosition.Y > newPos.Y + FontString.Height)
+                newMouseCharacterPosition.X > newPos.X + ChromeFontString.Width || newMouseCharacterPosition.Y > newPos.Y + ChromeFontString.Height)
             {
                 return false;
             }
@@ -63,13 +102,13 @@ namespace Pengu.Renderer.UI
 
         public virtual bool ProcessMouseMove(double x, double y)
         {
-            newMouseCharacterPosition = surface.ScreenToCharacterSize(new Vector2((float)x, (float)y), FontString);
+            newMouseCharacterPosition = surface.ScreenToCharacterSize(new Vector2((float)x, (float)y), ChromeFontString);
 
             if (dragging && surface.FocusedWindow == this)
             {
                 // update the offset
-                FontString.Set(offset: surface.CharacterToScreenSize(
-                    new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition, FontString));
+                ChromeFontString.Set(offset: surface.CharacterToScreenSize(
+                    new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition, ChromeFontString));
             }
             else
                 lastMouseCharacterPosition = newMouseCharacterPosition;

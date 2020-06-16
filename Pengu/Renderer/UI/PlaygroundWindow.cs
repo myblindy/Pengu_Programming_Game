@@ -15,9 +15,9 @@ namespace Pengu.Renderer.UI
         public PlaygroundWindow(VulkanContext context, VulkanContext.GameSurface surface, VM vm) : base(context, surface)
         {
             this.vm = vm;
-            FontString = context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -1), 0.055f);
+            ContentFontString = context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -1), 0.055f);
 
-            (positionX, positionY) = (0, 8);
+            (positionX, positionY, ChromeTitle) = (0, 8, "PLAY");
 
             vm.RegisterInterrupt(0x45, vm => SetDigit(vm.Registers[0]));
         }
@@ -25,7 +25,7 @@ namespace Pengu.Renderer.UI
         private void SetDigit(int val)
         {
             Digits[(val & 0x80) > 0 ? 1 : 0].Value = val;
-            fontStringDirty = true;
+            contentFontStringDirty = true;
         }
 
         public override void UpdateLogic(TimeSpan elapsedTime)
@@ -60,20 +60,18 @@ namespace Pengu.Renderer.UI
             public string this[int idx] => Lines[idx];
         }
 
-        protected override void FillFontString(bool first)
+        protected override void FillContentFontString(bool first)
         {
-            FontString.Set(
-                $"╔═══{VulkanContext.Font.PrintableSpace}PLAY{VulkanContext.Font.PrintableSpace}══╗\n" +
-                $"║ {Digits[0][0]} {Digits[1][0]} ║\n" +
-                $"║ {Digits[0][1]} {Digits[1][1]} ║\n" +
-                $"║ {Digits[0][2]} {Digits[1][2]} ║\n" +
-                $"║ {Digits[0][3]} {Digits[1][3]} ║\n" +
-                $"║ {Digits[0][4]} {Digits[1][4]} ║\n" +
-                "╚═══════════╝");
+            ContentFontString.Set(
+                $" {Digits[0][0]} {Digits[1][0]} \n" +
+                $" {Digits[0][1]} {Digits[1][1]} \n" +
+                $" {Digits[0][2]} {Digits[1][2]} \n" +
+                $" {Digits[0][3]} {Digits[1][3]} \n" +
+                $" {Digits[0][4]} {Digits[1][4]} ");
 
             if (first)
-                FontString.Set(null, VulkanContext.FontColor.BrightBlack, VulkanContext.FontColor.Black,
-                    surface.CharacterToScreenSize(positionX, positionY, FontString),
+                ContentFontString.Set(null, VulkanContext.FontColor.BrightBlack, VulkanContext.FontColor.Black,
+                    surface.CharacterToScreenSize(positionX, positionY, ChromeFontString),
                     new[]
                     {
                         new FontOverride(4, 6, VulkanContext.FontColor.White, VulkanContext.FontColor.Black, false),

@@ -540,6 +540,9 @@ namespace Pengu.Renderer
             public Vector2 Position { get => position; set { position = value; font.IsBufferDataDirty = true; font.IsCommandBufferDirty = true; } }
 
             float size;
+
+            public event Action Changed;
+
             public float Size { get => size; set { size = value; font.IsBufferDataDirty = true; font.IsCommandBufferDirty = true; } }
         }
 

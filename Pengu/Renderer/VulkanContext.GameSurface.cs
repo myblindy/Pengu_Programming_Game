@@ -52,23 +52,29 @@ namespace Pengu.Renderer
                 return Array.Empty<CommandBuffer>();
             }
 
+            static float map(float val, float srcMin, float srcMax, float dstMin, float dstMax) =>
+                (val - srcMin) / (srcMax - srcMin) * (dstMax - dstMin) + dstMin;
+
             public Vector2 ScreenToCharacterSize(Vector2 vec, FontString fs)
             {
-                var xFontSize = fs.Size / characterSize.Y * characterSize.X;
-                return new Vector2((int)(4 / xFontSize * vec.X), (int)(4 / fs.Size * vec.Y));
+                var xFontSize = fs.Size / characterSize.X * characterSize.Y;
+                //return new Vector2((int)(2 / xFontSize * vec.X), (int)(2 / fs.Size * vec.Y));
+                return new Vector2(
+                    map(vec.X, -1, 1, 0, 2 / xFontSize),
+                    map(vec.Y, -1, 1, 0, 2 / fs.Size));
             }
 
             public Vector2 CharacterToScreenSize(int x, int y, FontString fs)
             {
-                var xFontSize = fs.Size / characterSize.Y * characterSize.X;
-                return new Vector2(x * xFontSize / 2, y * fs.Size / 2);
+                var xFontSize = fs.Size / characterSize.X * characterSize.Y;
+                //return new Vector2(x * xFontSize / 1, y * fs.Size / 1);
+                return new Vector2(
+                    map(x, 0, 2 / xFontSize, -1, 1),
+                    map(y, 0, 2 / fs.Size, -1, 1));
             }
 
-            public Vector2 CharacterToScreenSize(Vector2 v, FontString fs)
-            {
-                var xFontSize = fs.Size / characterSize.Y * characterSize.X;
-                return new Vector2(v.X * xFontSize / 2, v.Y * fs.Size / 2);
-            }
+            public Vector2 CharacterToScreenSize(Vector2 v, FontString fs) => 
+                CharacterToScreenSize((int)v.X, (int)v.Y, fs);
 
             public bool ProcessMouseMove(double x, double y)
             {

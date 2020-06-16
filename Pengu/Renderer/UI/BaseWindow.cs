@@ -32,7 +32,6 @@ namespace Pengu.Renderer.UI
         public BaseWindow(VulkanContext context, VulkanContext.GameSurface surface)
         {
             (this.context, this.surface) = (context, surface);
-
             ChromeFontString = AllocateWindowFontString();
         }
 

@@ -15,7 +15,7 @@ namespace Pengu.Renderer.UI
         public PlaygroundWindow(VulkanContext context, VulkanContext.GameSurface surface, VM vm) : base(context, surface)
         {
             this.vm = vm;
-            ContentFontString = context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -1), 0.055f);
+            ContentFontString = AllocateWindowFontString();
 
             (positionX, positionY, ChromeTitle) = (0, 8, "PLAY");
 

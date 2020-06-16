@@ -515,6 +515,8 @@ namespace Pengu.Renderer
                 if (offset.HasValue) Offset = offset.Value;
                 if (fillBackground.HasValue) FillBackground = fillBackground.Value;
 
+                Changed?.Invoke();
+
                 font.IsBufferDataDirty = true;
             }
 

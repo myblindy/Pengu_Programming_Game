@@ -78,8 +78,8 @@ namespace Pengu.Renderer.UI
         public virtual bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers)
         {
             var newPos = new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition;
-            if (newMouseCharacterPosition.X < newPos.X || newMouseCharacterPosition.Y < newPos.Y ||
-                newMouseCharacterPosition.X > newPos.X + ChromeFontString.Width || newMouseCharacterPosition.Y > newPos.Y + ChromeFontString.Height)
+            if (newMouseCharacterPosition.X < newPos.X - 1 || newMouseCharacterPosition.Y < newPos.Y - 1 ||
+                newMouseCharacterPosition.X > newPos.X - 1 + ChromeFontString.Width || newMouseCharacterPosition.Y > newPos.Y - 1 + ChromeFontString.Height)
             {
                 return false;
             }
@@ -101,13 +101,15 @@ namespace Pengu.Renderer.UI
 
         public virtual bool ProcessMouseMove(double x, double y)
         {
-            newMouseCharacterPosition = surface.ScreenToCharacterSize(new Vector2((float)x, (float)y), ChromeFontString);
+            newMouseCharacterPosition = surface.ScreenToCharacterSize(new Vector2((float)x * 2, (float)y * 2), ChromeFontString);
 
             if (dragging && surface.FocusedWindow == this)
             {
                 // update the offset
                 ChromeFontString.Set(offset: surface.CharacterToScreenSize(
-                    new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition, ChromeFontString));
+                    new Vector2(positionX - 1, positionY - 1) + newMouseCharacterPosition - lastMouseCharacterPosition, ChromeFontString));
+                ContentFontString.Set(offset: surface.CharacterToScreenSize(
+                    new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition, ContentFontString));
             }
             else
                 lastMouseCharacterPosition = newMouseCharacterPosition;

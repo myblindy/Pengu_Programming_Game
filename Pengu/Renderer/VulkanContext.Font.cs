@@ -75,7 +75,7 @@ namespace Pengu.Renderer
                     var length = binfile.BaseStream.Length;
                     do
                     {
-                        const float offset1 = 0.00f, offset2u = 0, offset2v = 0.00f;
+                        const float offset1 = 0.001f, offset2u = 0, offset2v = 0.00f;
                         Characters.Add(binfile.ReadChar(), (binfile.ReadSingle() + offset1, binfile.ReadSingle() + offset1, binfile.ReadSingle() + offset2u, binfile.ReadSingle() + offset2v));
                     } while (binfile.BaseStream.Position < length);
                 }

@@ -28,6 +28,7 @@ namespace Pengu.Renderer
                 if (Windows[0] != window)
                 {
                     context.monospaceFont.MoveStringToTop(window.ChromeFontString);
+                    context.monospaceFont.MoveStringToTop(window.ContentFontString);
                     Windows.Remove(window);
                     Windows.Insert(0, window);
                 }
@@ -52,28 +53,28 @@ namespace Pengu.Renderer
                 return Array.Empty<CommandBuffer>();
             }
 
-            static float map(float val, float srcMin, float srcMax, float dstMin, float dstMax) =>
+            static float Map(float val, float srcMin, float srcMax, float dstMin, float dstMax) =>
                 (val - srcMin) / (srcMax - srcMin) * (dstMax - dstMin) + dstMin;
 
             public Vector2 ScreenToCharacterSize(Vector2 vec, FontString fs)
             {
-                var xFontSize = fs.Size / characterSize.X * characterSize.Y;
-                //return new Vector2((int)(2 / xFontSize * vec.X), (int)(2 / fs.Size * vec.Y));
-                return new Vector2(
-                    map(vec.X, -1, 1, 0, 2 / xFontSize),
-                    map(vec.Y, -1, 1, 0, 2 / fs.Size));
+                var xFontSize = fs.Size / characterSize.Y * characterSize.X;
+                var v = new Vector2(
+                    MathF.Floor(Map(vec.X, 0, 2, 0, MathF.Floor(4 / xFontSize))),
+                    MathF.Floor(Map(vec.Y, 0, 2, 0, MathF.Floor(2 / fs.Size))));
+                return v;
             }
 
             public Vector2 CharacterToScreenSize(int x, int y, FontString fs)
             {
-                var xFontSize = fs.Size / characterSize.X * characterSize.Y;
+                var xFontSize = fs.Size / characterSize.Y * characterSize.X;
                 //return new Vector2(x * xFontSize / 1, y * fs.Size / 1);
                 return new Vector2(
-                    map(x, 0, 2 / xFontSize, -1, 1),
-                    map(y, 0, 2 / fs.Size, -1, 1));
+                    Map(x, 0, MathF.Floor(4 / xFontSize), 0, 2),
+                    Map(y, 0, MathF.Floor(2 / fs.Size), 0, 2));
             }
 
-            public Vector2 CharacterToScreenSize(Vector2 v, FontString fs) => 
+            public Vector2 CharacterToScreenSize(Vector2 v, FontString fs) =>
                 CharacterToScreenSize((int)v.X, (int)v.Y, fs);
 
             public bool ProcessMouseMove(double x, double y)

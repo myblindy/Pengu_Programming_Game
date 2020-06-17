@@ -37,25 +37,30 @@ namespace Pengu.Renderer.UI
 
             var line = Math.DivRem(selectedHalfByte, editorLineBytes * 2, out var halfIndexInLine);
 
-            const int frameLength = addressSizeBytes * 2 + 4 + editorLineBytes * 3 + 3;
-            var headerAddress0 = frameLength + 2 + 7 + 3 * (halfIndexInLine / 2);
-            var leftAddress0 = (3 + line) * frameLength + 2;
+            const int frameLength = addressSizeBytes * 2 + 3 + editorLineBytes * 3 + 2;
+            var headerAddress0 = 8 + 3 * (halfIndexInLine / 2);
+            var leftAddress0 = (2 + line) * frameLength + 1;
             var value0 = leftAddress0 + 4 + 3 + 3 * (halfIndexInLine / 2) + halfIndexInLine % 2;
 
             var ipLine = Math.DivRem(vm.InstructionPointer, editorLineBytes, out var ipIndexInLine);
             var disasmNext = InstructionSet.Disassemble(vm.Memory.AsMemory(vm.InstructionPointer), out var instructionByteSize);
-            var ip0 = (3 + ipLine) * frameLength + 4 + 5 + 3 * ipIndexInLine;
 
-            var valOverride = (value0, 1, ChromeBackground, VulkanContext.FontColor.BrightCyan, true);
-            var ipOverride = (ip0, 3 * instructionByteSize, done ? VulkanContext.FontColor.DarkGreen : VulkanContext.FontColor.DarkRed,
-                done ? ChromeBackground : VulkanContext.FontColor.White, false);
+            var ip0 = (2 + ipLine) * frameLength + 3 + 5 + 3 * ipIndexInLine;
+            var ip0len = 3 * Math.Min(editorLineBytes - ipIndexInLine, instructionByteSize);
+            var ip1 = (3 + ipLine) * frameLength + 3 + 5 + 0;
+            var ip1len = 3 * instructionByteSize - ip0len;
+
             var overrides = new FontOverride[]
                 {
                     (headerAddress0, 2, ChromeBackground, VulkanContext.FontColor.BrightCyan, true),
                     (leftAddress0, 4, ChromeBackground, VulkanContext.FontColor.BrightCyan, true),
-                    value0 < ip0 ? valOverride : ipOverride,
-                    value0 >= ip0 ? valOverride : ipOverride,
+                    (value0, 1, ChromeBackground, VulkanContext.FontColor.BrightCyan, true),
+                    (ip0, ip0len, done ? VulkanContext.FontColor.DarkGreen : VulkanContext.FontColor.DarkRed,
+                        done ? ChromeBackground : VulkanContext.FontColor.White, false),
+                    (ip1, ip1len, done ? VulkanContext.FontColor.DarkGreen : VulkanContext.FontColor.DarkRed,
+                        done ? ChromeBackground : VulkanContext.FontColor.White, false),
                 };
+            Array.Sort(overrides, (a, b) => a.start.CompareTo(b.start));
 
             var regFlags = string.Concat(vm.Registers.Select((val, idx) => $"R{idx}: 0x{val:X2} ")) +
                 $"SR: 0x{vm.StackRegister:X2} IP: 0x{vm.InstructionPointer:X2} F: {(vm.FlagCompare < 0 ? "-" : vm.FlagCompare == 0 ? "0" : "+")} ";

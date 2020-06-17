@@ -585,7 +585,9 @@ namespace Pengu.Renderer
                 ++framesRendered;
                 if (totalElapsed >= nextFpsMeasurement)
                 {
-                    fontStringFps.Set($"FPS: {framesRendered / (totalElapsed - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds:0.00} Font Verts: {monospaceFont.UsedVertices} used out of {monospaceFont.MaxVertices}",
+                    var fps = framesRendered / (totalElapsed - nextFpsMeasurement + fpsMeasurementInterval).TotalSeconds;
+                    fontStringFps.Set(
+                        $"FPS: {fps:0.00} Font Verts: {monospaceFont.UsedVertices} used out of {monospaceFont.MaxVertices}",
                         FontColor.Black, FontColor.White);
 
                     framesRendered = 0;

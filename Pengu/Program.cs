@@ -1,6 +1,4 @@
-﻿using Antlr4.Runtime;
-using Pengu.Grammar;
-using Pengu.Renderer;
+﻿using Pengu.Renderer;
 using Pengu.VirtualMachine;
 using System;
 using System.Diagnostics;
@@ -11,17 +9,6 @@ namespace Pengu
 {
     class Program
     {
-        public class ErrorListener<S> : ConsoleErrorListener<S>
-        {
-            public bool had_error = false;
-
-            public override void SyntaxError(TextWriter output, IRecognizer recognizer, S offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
-            {
-                had_error = true;
-                base.SyntaxError(output, recognizer, offendingSymbol, line, charPositionInLine, msg, e);
-            }
-        }
-
         static void Main(string[] _)
         {
 #if DEBUG 
@@ -29,15 +16,6 @@ namespace Pengu
 #else
             const bool debug = false;
 #endif
-
-            var input = new AntlrInputStream("hello world");
-            var lexer = new BLanguageGrammarLexer(input);
-            var tokens = new CommonTokenStream(lexer);
-            var parser = new BLanguageGrammarParser(tokens);
-            var listener = new ErrorListener<IToken>();
-            parser.AddErrorListener(listener);
-            var tree = parser.r();
-            Console.WriteLine(listener.had_error ? "Didn't work" : "Worked");
 
             var vm = new VM(VMType.BitLength8, registers: 1, memory: 60);
 
@@ -54,8 +32,7 @@ db 0b1111111
 db 0b1100111
 
 ; temporary storage for the current counter
-.tmp
-db 0
+.tmp db 0
 
 org
 mov r0 0

@@ -7,8 +7,6 @@ namespace Pengu.Renderer.UI
 {
     class PlaygroundWindow : BaseWindow
     {
-        private const VulkanContext.FontColor fgDigitColor = VulkanContext.FontColor.White;
-
         private readonly VM vm;
         private readonly Digit[] Digits = Enumerable.Range(0, 2).Select(_ => new Digit()).ToArray();
 
@@ -17,14 +15,15 @@ namespace Pengu.Renderer.UI
             this.vm = vm;
             ContentFontString = AllocateWindowFontString();
 
-            (positionX, positionY, ChromeTitle) = (0, 8, "PLAY");
+            (positionX, positionY, ChromeTitle) = (1, 8, "PLAY");
+            ChromeBackground = VulkanContext.FontColor.BrightBlack;
 
             vm.RegisterInterrupt(0x45, vm => SetDigit(vm.Registers[0]));
         }
 
         private void SetDigit(int val)
         {
-            Digits[(val & 0x80) > 0 ? 1 : 0].Value = val;
+            Digits[val >> 7].Value = val;
             contentFontStringDirty = true;
         }
 
@@ -70,17 +69,7 @@ namespace Pengu.Renderer.UI
                 $" {Digits[0][4]} {Digits[1][4]} ");
 
             if (first)
-                ContentFontString.Set(null, VulkanContext.FontColor.BrightBlack, VulkanContext.FontColor.Black,
-                    surface.CharacterToScreenSize(positionX, positionY, ChromeFontString),
-                    new[]
-                    {
-                        new FontOverride(4, 6, VulkanContext.FontColor.White, VulkanContext.FontColor.Black, false),
-                        new FontOverride(16, 9, VulkanContext.FontColor.BrightBlack, fgDigitColor, false),
-                        new FontOverride(30, 9, VulkanContext.FontColor.BrightBlack, fgDigitColor, false),
-                        new FontOverride(44, 9, VulkanContext.FontColor.BrightBlack, fgDigitColor, false),
-                        new FontOverride(58, 9, VulkanContext.FontColor.BrightBlack, fgDigitColor, false),
-                        new FontOverride(72, 9, VulkanContext.FontColor.BrightBlack, fgDigitColor, false),
-                    }, fillBackground: true);
+                ContentFontString.Set(null, ChromeBackground, ChromeForeground, surface.CharacterToScreenSize(positionX, positionY, ChromeFontString));
         }
     }
 }

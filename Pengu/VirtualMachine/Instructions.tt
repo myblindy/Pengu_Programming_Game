@@ -296,6 +296,7 @@ namespace Pengu.VirtualMachine
                     tokens.Add(line[start..idx]);
                 }
 
+				redo:
 				if(!tokens.Any() || tokens[0].StartsWith(";")) continue;
 
 				int GetNumber(string n) => n.StartsWith("0x") ? Convert.ToInt32(n, 16) : n.StartsWith("0b") ? Convert.ToInt32(n[2..], 2) : n[0] == '.' ? labels[n[1..]] : int.Parse(n);
@@ -349,10 +350,11 @@ namespace Pengu.VirtualMachine
                     continue;
                 }
 
-                if (tokens.Count == 1 && tokens[0].FirstOrDefault() == '.')
+                if (tokens.Count >= 1 && tokens[0].FirstOrDefault() == '.')
                 {
                     labels.Add(tokens[0][1..], memidx);
-                    continue;
+                    tokens.RemoveAt(0);
+                    goto redo;
                 }
 
 				if(tokens.Count == 2 && tokens[0].Equals("DB", StringComparison.OrdinalIgnoreCase) && IsI8(tokens[1], out i0))

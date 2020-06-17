@@ -43,13 +43,24 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="BLanguageGrammar.interp" />
+    <None Remove="BLanguageGrammar.r.dot" />
+    <None Remove="BLanguageGrammar.tokens" />
+    <None Remove="BLanguageGrammarLexer.ID.dot" />
+    <None Remove="BLanguageGrammarLexer.interp" />
+    <None Remove="BLanguageGrammarLexer.tokens" />
+    <None Remove="BLanguageGrammarLexer.T__0.dot" />
+    <None Remove="BLanguageGrammarLexer.WS.dot" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="morelinq" Version="3.3.2" />
     <PackageReference Include="SharpVk" Version="1.0.0-dev496" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-rc0001" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-rc0002" />
   </ItemGroup>
 
   <ItemGroup>
@@ -93,20 +104,6 @@
     <Reference Include="GLFW.NET">
       <HintPath>deps\GLFW.NET.dll</HintPath>
     </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Antlr4 Include="Grammar\BLanguageGrammar.g4">
-      <Listener>false</Listener>
-      <Visitor>false</Visitor>
-      <GAtn>true</GAtn>
-      <Package>Pengu.Grammar</Package>
-      <Error>true</Error>
-    </Antlr4>
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.8.0" />
-    <PackageReference Include="Antlr4BuildTasks" Version="3.0" />
   </ItemGroup>
 
 </Project>

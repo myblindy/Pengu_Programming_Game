@@ -68,6 +68,12 @@ namespace Pengu.Renderer
             public ModifierKeys Modifiers;
         }
 
+        struct CharacterAction : IInputAction
+        {
+            public string Character;
+            public ModifierKeys Modifiers;
+        }
+
         struct MouseMoveAction : IInputAction
         {
             public double X, Y;
@@ -143,10 +149,15 @@ namespace Pengu.Renderer
             Glfw.Init();
 
             window = new NativeWindow(Width, Height, "Pengu");
+            Glfw.SetInputMode(window, InputMode.LockKeyMods, 1);
 
             static void KeyActionCallback(object sender, KeyEventArgs args) => ContextInstance.InputActionQueue.Enqueue(
                 new KeyAction { Key = args.Key, ScanCode = args.ScanCode, Action = args.State, Modifiers = args.Modifiers });
             window.KeyAction += KeyActionCallback;
+
+            static void CharacterInputCallback(object sender, CharEventArgs args) => ContextInstance.InputActionQueue.Enqueue(
+                new CharacterAction { Character = args.Char, Modifiers = args.ModifierKeys });
+            window.CharacterInput += CharacterInputCallback;
 
             static void MouseMovedCallback(object sender, MouseMoveEventArgs args) => ContextInstance.InputActionQueue.Enqueue(
                 new MouseMoveAction { X = args.X / ContextInstance.extent.Width, Y = args.Y / ContextInstance.extent.Height });
@@ -311,6 +322,7 @@ namespace Pengu.Renderer
             gameSurface = new GameSurface(this);
             gameSurface.AddHexEditorWindow(vm);
             gameSurface.AddPlaygroundWindow(vm);
+            gameSurface.AddAssemblerWindow(@"mov r0 0", vm);
         }
 
         ShaderModule CreateShaderModule(string filePath)
@@ -497,9 +509,14 @@ namespace Pengu.Renderer
                     case MouseMoveAction mouseMoveAction:
                         gameSurface.ProcessMouseMove(mouseMoveAction.X, mouseMoveAction.Y);
                         break;
-                    case MouseButtonAction mouseButton:
-                        gameSurface.ProcessMouseButton(mouseButton.Button, mouseButton.Action, mouseButton.Modifiers);
+                    case MouseButtonAction mouseButtonAction:
+                        gameSurface.ProcessMouseButton(mouseButtonAction.Button, mouseButtonAction.Action, mouseButtonAction.Modifiers);
                         break;
+                    case CharacterAction characterAction:
+                        gameSurface.ProcessCharacter(characterAction.Character, characterAction.Modifiers);
+                        break;
+                    default:
+                        throw new InvalidOperationException();
                 }
             }
 
@@ -650,6 +667,7 @@ namespace Pengu.Renderer
     interface IRenderableModule
     {
         public bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers);
+        public bool ProcessCharacter(string character, ModifierKeys modifiers);
         public bool ProcessMouseMove(double x, double y);
         public bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers);
         public void UpdateLogic(TimeSpan elapsedTime);

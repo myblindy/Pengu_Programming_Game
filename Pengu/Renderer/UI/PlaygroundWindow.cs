@@ -7,17 +7,11 @@ namespace Pengu.Renderer.UI
 {
     class PlaygroundWindow : BaseWindow
     {
-        private readonly VM vm;
         private readonly Digit[] Digits = Enumerable.Range(0, 2).Select(_ => new Digit()).ToArray();
 
-        public PlaygroundWindow(VulkanContext context, VulkanContext.GameSurface surface, VM vm) : base(context, surface)
+        public PlaygroundWindow(VulkanContext context, VulkanContext.GameSurface surface, VM vm) :
+            base(context, surface, "PLAY", positionX: 1, positionY: 8, chromeBackground: FontColor.BrightBlack)
         {
-            this.vm = vm;
-            ContentFontString = AllocateWindowFontString();
-
-            (positionX, positionY, ChromeTitle) = (1, 8, "PLAY");
-            ChromeBackground = VulkanContext.FontColor.BrightBlack;
-
             vm.RegisterInterrupt(0x45, vm => SetDigit(vm.Registers[0]));
         }
 
@@ -69,7 +63,7 @@ namespace Pengu.Renderer.UI
                 $" {Digits[0][4]} {Digits[1][4]} ");
 
             if (first)
-                ContentFontString.Set(null, ChromeBackground, ChromeForeground, surface.CharacterToScreenSize(positionX, positionY, ChromeFontString));
+                ContentFontString.Set(null, chromeBackground, chromeForeground, surface.CharacterToScreenSize(positionX, positionY, ChromeFontString));
         }
     }
 }

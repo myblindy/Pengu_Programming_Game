@@ -13,7 +13,10 @@ void main()
 {
     vec4 texColor = texture(texSampler, fragTexCoord);
     if(texColor.r < 0.1)
-        outColor = fragBackgroundColor;
+        if(fragBackgroundColor.a < 1)
+            discard;
+        else
+            outColor = fragBackgroundColor;
     else
         outColor = fragColor;
 }

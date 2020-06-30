@@ -16,11 +16,14 @@ namespace Pengu.Renderer.UI
         public VulkanContext.FontString ChromeFontString { get; private set; }
         private bool chromeFontStringDirty = true;
 
-        protected string ChromeTitle;
-        protected VulkanContext.FontColor ChromeBackground = VulkanContext.FontColor.Black, ChromeForeground = VulkanContext.FontColor.White;
+        protected string chromeTitle;
+        protected FontColor chromeBackground, chromeForeground;
 
-        public VulkanContext.FontString ContentFontString { get; protected set; }
+        public VulkanContext.FontString ContentFontString { get; private set; }
         protected bool contentFontStringDirty = true;
+
+        public virtual int Width => ContentFontString.Width;
+        public virtual int Height => ContentFontString.Height;
 
         bool dragging;
 
@@ -29,10 +32,13 @@ namespace Pengu.Renderer.UI
         protected VulkanContext.FontString AllocateWindowFontString() =>
              context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -1), 0.055f);
 
-        public BaseWindow(VulkanContext context, VulkanContext.GameSurface surface)
+        public BaseWindow(VulkanContext context, VulkanContext.GameSurface surface, string title, int positionX = 0, int positionY = 0,
+            FontColor chromeBackground = FontColor.Black,
+            FontColor chromeForeground = FontColor.White)
         {
-            (this.context, this.surface) = (context, surface);
-            ChromeFontString = AllocateWindowFontString();
+            (this.context, this.surface, chromeTitle, this.positionX, this.positionY, this.chromeBackground, this.chromeForeground) =
+                (context, surface, title, positionX, positionY, chromeBackground, chromeForeground);
+            (ChromeFontString, ContentFontString) = (AllocateWindowFontString(), AllocateWindowFontString());
         }
 
         protected abstract void FillContentFontString(bool first);
@@ -57,21 +63,23 @@ namespace Pengu.Renderer.UI
 
         private void FillChromeFontString(bool first)
         {
-            var titleHalfOffset = (ContentFontString.Width - ChromeTitle.Length - 2) / 2;
-            var titleHalfOffsetExtra = (ContentFontString.Width - ChromeTitle.Length - 2) % 2;
-            var line = "║" + new string(' ', ContentFontString.Width) + "║\n";
+            var titleHalfOffset = (Width - chromeTitle.Length - 2) / 2;
+            var titleHalfOffsetExtra = (Width - chromeTitle.Length - 2) % 2;
+            var line = "║" + new string(' ', Width) + "║\n";
 
             ChromeFontString.Set(
                 "╔" + new string('═', titleHalfOffset + titleHalfOffsetExtra) +
-                    VulkanContext.Font.PrintableSpace + ChromeTitle.Replace(' ', VulkanContext.Font.PrintableSpace) + VulkanContext.Font.PrintableSpace +
+                    VulkanContext.Font.PrintableSpace + chromeTitle.Replace(' ', VulkanContext.Font.PrintableSpace) + VulkanContext.Font.PrintableSpace +
                     new string('═', titleHalfOffset) + "╗\n" +
-                string.Concat(Enumerable.Repeat(line, ContentFontString.Height)) +
-                "╚" + new string('═', ContentFontString.Width) + "╝");
+                string.Concat(Enumerable.Repeat(line, Height)) +
+                "╚" + new string('═', Width) + "╝");
 
             if (first)
-                ChromeFontString.Set(defaultBg: ChromeBackground, defaultFg: ChromeForeground,
+                ChromeFontString.Set(defaultBg: chromeBackground, defaultFg: chromeForeground,
                     offset: surface.CharacterToScreenSize(positionX - 1, positionY - 1, ChromeFontString), fillBackground: true);
         }
+
+        public virtual bool ProcessCharacter(string character, ModifierKeys modifiers) => false;
 
         public virtual bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers) => false;
 

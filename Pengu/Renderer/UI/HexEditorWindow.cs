@@ -18,14 +18,12 @@ namespace Pengu.Renderer.UI
 
         bool done, running;
 
-        public HexEditorWindow(VulkanContext context, VulkanContext.GameSurface surface, VM vm) : base(context, surface)
+        public HexEditorWindow(VulkanContext context, VulkanContext.GameSurface surface, VM vm) :
+            base(context, surface, "HEX EDITOR", positionX: 8, positionY: 2,
+                chromeBackground: FontColor.Black, chromeForeground: FontColor.BrightGreen)
         {
             this.vm = vm;
             vm.RegisterInterrupt(0, _ => { done = true; running = false; });
-
-            ContentFontString = AllocateWindowFontString();
-            (positionX, positionY, ChromeTitle) = (8, 2, "HEX EDITOR");
-            (ChromeBackground, ChromeForeground) = (VulkanContext.FontColor.Black, VulkanContext.FontColor.BrightGreen);
         }
 
         protected override void FillContentFontString(bool first)
@@ -52,13 +50,13 @@ namespace Pengu.Renderer.UI
 
             var overrides = new FontOverride[]
                 {
-                    (headerAddress0, 2, ChromeBackground, VulkanContext.FontColor.BrightCyan, true),
-                    (leftAddress0, 4, ChromeBackground, VulkanContext.FontColor.BrightCyan, true),
-                    (value0, 1, ChromeBackground, VulkanContext.FontColor.BrightCyan, true),
-                    (ip0, ip0len, done ? VulkanContext.FontColor.DarkGreen : VulkanContext.FontColor.DarkRed,
-                        done ? ChromeBackground : VulkanContext.FontColor.White, false),
-                    (ip1, ip1len, done ? VulkanContext.FontColor.DarkGreen : VulkanContext.FontColor.DarkRed,
-                        done ? ChromeBackground : VulkanContext.FontColor.White, false),
+                    (headerAddress0, 2, chromeBackground, FontColor.BrightCyan, true),
+                    (leftAddress0, 4, chromeBackground, FontColor.BrightCyan, true),
+                    (value0, 1, chromeBackground, FontColor.BrightCyan, true),
+                    (ip0, ip0len, done ? FontColor.DarkGreen : FontColor.DarkRed,
+                        done ? chromeBackground : FontColor.White, false),
+                    (ip1, ip1len, done ? FontColor.DarkGreen : FontColor.DarkRed,
+                        done ? chromeBackground : FontColor.White, false),
                 };
             Array.Sort(overrides, (a, b) => a.start.CompareTo(b.start));
 
@@ -80,7 +78,7 @@ namespace Pengu.Renderer.UI
                 overrides: overrides);
 
             if (first)
-                ContentFontString.Set(defaultBg: ChromeBackground, defaultFg: ChromeForeground,
+                ContentFontString.Set(defaultBg: chromeBackground, defaultFg: chromeForeground,
                     offset: surface.CharacterToScreenSize(positionX, positionY, ContentFontString));
         }
 

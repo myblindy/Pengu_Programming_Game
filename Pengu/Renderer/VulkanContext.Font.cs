@@ -53,7 +53,7 @@ namespace Pengu.Renderer
             ImageView fontTextureImageView;
             Sampler fontTextureSampler;
 
-            public uint MaxCharacters { get; private set; } = 2000;
+            public uint MaxCharacters { get; private set; } = 4000;
             public uint MaxVertices => MaxCharacters * 4;
             public uint MaxIndices => MaxCharacters * 6;
 
@@ -308,6 +308,11 @@ namespace Pengu.Renderer
                                     var (u0, v0, u1, v1) = Characters[' '];
                                     x += fs.Size * (u1 - u0) / (v1 - v0);
                                 }
+                                else if (ch == '\b')
+                                {
+                                    var (u0, v0, u1, v1) = Characters[' '];
+                                    x -= fs.Size * (u1 - u0) / (v1 - v0);
+                                }
                                 else
                                 {
                                     var (u0, v0, u1, v1) = Characters[ch == PrintableSpace ? ' ' : ch];
@@ -396,6 +401,8 @@ namespace Pengu.Renderer
             public void UpdateLogic(TimeSpan elapsedTime) => totalElapsedTime += elapsedTime;
 
             public bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers) => throw new NotImplementedException();
+
+            public bool ProcessCharacter(string character, ModifierKeys modifiers) => throw new NotImplementedException();
 
             public bool ProcessMouseMove(double x, double y) => throw new NotImplementedException();
 
@@ -492,9 +499,11 @@ namespace Pengu.Renderer
                 {
                     foreach (var ch in value)
                     {
-                        if (ch != '\n' && ch != ' ')
+                        if (ch != '\n' && ch != ' ' && ch != '\b')
                             ++nonSpaceLengthNewValue;
-                        if (ch == '\n')
+                        if (ch == '\b')
+                            --currentWidth;
+                        else if (ch == '\n')
                             (width, currentWidth, height) = (Math.Max(width, currentWidth), 0, height + 1);
                         else
                             ++currentWidth;
@@ -555,26 +564,6 @@ namespace Pengu.Renderer
             public static readonly uint Size = (uint)Marshal.SizeOf<FontUniformObject>();
         }
 
-        internal enum FontColor
-        {
-            Black,
-            DarkBlue,
-            DarkGreen,
-            DarkCyan,
-            DarkRed,
-            DarkMagenta,
-            DarkYellow,
-            DarkWhite,
-            BrightBlack,
-            BrightBlue,
-            BrightGreen,
-            BrightCyan,
-            BrightRed,
-            BrightMagenta,
-            BrightYellow,
-            White
-        }
-
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         struct FontVertex
         {
@@ -627,15 +616,36 @@ namespace Pengu.Renderer
         }
     }
 
+    internal enum FontColor
+    {
+        Black,
+        DarkBlue,
+        DarkGreen,
+        DarkCyan,
+        DarkRed,
+        DarkMagenta,
+        DarkYellow,
+        DarkWhite,
+        BrightBlack,
+        BrightBlue,
+        BrightGreen,
+        BrightCyan,
+        BrightRed,
+        BrightMagenta,
+        BrightYellow,
+        White,
+        Transparent
+    }
+
     internal struct FontOverride : IEquatable<FontOverride>
     {
         public int start;
         public int count;
-        public VulkanContext.FontColor bg;
-        public VulkanContext.FontColor fg;
+        public FontColor bg;
+        public FontColor fg;
         public bool selected;
 
-        public FontOverride(int start, int count, VulkanContext.FontColor bg, VulkanContext.FontColor fg, bool selected)
+        public FontOverride(int start, int count, FontColor bg, FontColor fg, bool selected)
         {
             this.start = start;
             this.count = count;
@@ -647,7 +657,7 @@ namespace Pengu.Renderer
         public override bool Equals(object obj) => obj is FontOverride other && Equals(other);
         public override int GetHashCode() => HashCode.Combine(start, count, bg, fg, selected);
 
-        public void Deconstruct(out int start, out int count, out VulkanContext.FontColor bg, out VulkanContext.FontColor fg, out bool selected)
+        public void Deconstruct(out int start, out int count, out FontColor bg, out FontColor fg, out bool selected)
         {
             start = this.start;
             count = this.count;
@@ -656,8 +666,8 @@ namespace Pengu.Renderer
             selected = this.selected;
         }
 
-        public static implicit operator (int start, int count, VulkanContext.FontColor bg, VulkanContext.FontColor fg, bool selected)(FontOverride value) => (value.start, value.count, value.bg, value.fg, value.selected);
-        public static implicit operator FontOverride((int start, int count, VulkanContext.FontColor bg, VulkanContext.FontColor fg, bool selected) value) => new FontOverride(value.start, value.count, value.bg, value.fg, value.selected);
+        public static implicit operator (int start, int count, FontColor bg, FontColor fg, bool selected)(FontOverride value) => (value.start, value.count, value.bg, value.fg, value.selected);
+        public static implicit operator FontOverride((int start, int count, FontColor bg, FontColor fg, bool selected) value) => new FontOverride(value.start, value.count, value.bg, value.fg, value.selected);
 
         public bool Equals(FontOverride other) => start == other.start && count == other.count && bg == other.bg && fg == other.fg && selected == other.selected;
     }

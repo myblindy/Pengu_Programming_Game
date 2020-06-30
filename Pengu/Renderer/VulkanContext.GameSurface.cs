@@ -93,23 +93,21 @@ namespace Pengu.Renderer
                 return false;
             }
 
-            public bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers)
-            {
-                foreach (var w in Windows)
-                    if (w.ProcessKey(key, scanCode, action, modifiers))
-                        return true;
-                return false;
-            }
+            public bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers) =>
+                FocusedWindow?.ProcessKey(key, scanCode, action, modifiers) == true;
+
+            public bool ProcessCharacter(string character, ModifierKeys modifiers) =>
+                FocusedWindow?.ProcessCharacter(character, modifiers) == true;
 
             private void AddNewWindow(BaseWindow window)
             {
                 Windows.Insert(0, window);
-                if (Windows.Count == 1)
-                    FocusedWindow = window;
+                FocusedWindow = window;
             }
 
-            public void AddHexEditorWindow(VM vm) => AddNewWindow(new HexEditorWindow(context, this, vm));
+            internal void AddHexEditorWindow(VM vm) => AddNewWindow(new HexEditorWindow(context, this, vm));
             internal void AddPlaygroundWindow(VM vm) => AddNewWindow(new PlaygroundWindow(context, this, vm));
+            internal void AddAssemblerWindow(string asm, VM vm) => AddNewWindow(new AssemblerWindow(context, this, asm, vm));
         }
     }
 }

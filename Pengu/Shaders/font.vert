@@ -19,6 +19,7 @@ const vec4 colors[] =
     vec4(180 / 255.0,   0 / 255.0, 158 / 255.0, 1),             // BrightMagenta
     vec4(249 / 255.0, 241 / 255.0, 165 / 255.0, 1),             // BrightYellow
     vec4(242 / 255.0, 242 / 255.0, 242 / 255.0, 1),             // White
+    vec4(  0 / 255.0,   0 / 255.0,   0 / 255.0, 0),             // Transparent
 };
 
 const int selectedColorIndex = 3;                                  
@@ -40,8 +41,11 @@ void main()
 {
     gl_Position = vec4(inPosUv.xy + offset, 0.0, 1.0);
 
-    fragBackgroundColor = colors[bgFgSelected >> 16];
-    fragColor = colors[(bgFgSelected >> 8) & 0xFF];
+    const int bgIndex = bgFgSelected >> 16;
+    fragBackgroundColor = colors[bgIndex];
+
+    const int fgIndex = (bgFgSelected >> 8) & 0xFF;
+    fragColor = colors[fgIndex];
 
     if((bgFgSelected & 0xFF) > 0)
         fragColor *= ((sin(ubo.time / 100.0) + 1.0) * 3.0 / 4.0 + 2.0 / 3.0);                       // normalize and move to the upper 1/3

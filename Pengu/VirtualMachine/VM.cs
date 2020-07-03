@@ -20,6 +20,9 @@ namespace Pengu.VirtualMachine
 
         private readonly Dictionary<int, Action<VM>> Interrupts = new Dictionary<int, Action<VM>>();
 
+        public event Action<VM> RefreshRequired;
+        public void FireRefreshRequired() => RefreshRequired?.Invoke(this);
+
         public VM(VMType type, int registers, int memory)
         {
             Type = type;

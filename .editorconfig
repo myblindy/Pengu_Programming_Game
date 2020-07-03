@@ -202,3 +202,6 @@ dotnet_diagnostic.CA1303.severity = silent
 
 # CA1819: Properties should not return arrays
 dotnet_diagnostic.CA1819.severity = silent
+
+# CA1307: Specify StringComparison
+dotnet_diagnostic.CA1307.severity = silent

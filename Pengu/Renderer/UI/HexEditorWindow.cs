@@ -23,6 +23,7 @@ namespace Pengu.Renderer.UI
                 chromeBackground: FontColor.Black, chromeForeground: FontColor.BrightGreen)
         {
             this.vm = vm;
+            vm.RefreshRequired += _ => contentFontStringDirty = true;
             vm.RegisterInterrupt(0, _ => { done = true; running = false; });
         }
 
@@ -121,7 +122,7 @@ namespace Pengu.Renderer.UI
                 vm.RunNextInstruction();
                 contentFontStringDirty = true;
             }
-            if (key == Keys.F5 && modifiers == 0 && action == InputState.Press && !done && !running)
+            if (key == Keys.F5 && !modifiers.HasFlag(ModifierKeys.Shift) && action == InputState.Press && !done && !running)
                 running = true;
             if (key == Keys.F5 && modifiers.HasFlag(ModifierKeys.Shift) && action == InputState.Press && !done && running)
                 running = false;

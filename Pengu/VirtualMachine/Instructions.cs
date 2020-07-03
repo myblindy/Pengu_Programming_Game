@@ -1057,7 +1057,7 @@ namespace Pengu.VirtualMachine
 
         public static void Assemble(VM vm, string s)
         {
-			ushort memidx = 0;
+			ushort memidx = 0, org = 0;
 			int i0, i1;
 
 			var labels = new Dictionary<string, ushort>();
@@ -1165,17 +1165,7 @@ namespace Pengu.VirtualMachine
 
 				if(tokens.Count == 1 && tokens[0].Equals("ORG", StringComparison.OrdinalIgnoreCase))
 				{
-					switch(vm.Type)
-					{
-						case VMType.BitLength8:
-							vm.Memory[^1] = (byte)memidx;
-							break;
-						case VMType.BitLength16:
-							MemoryMarshal.Write(vm.Memory.AsSpan(^2..), ref memidx);
-							break;
-						default:
-							throw new InvalidOperationException($"Invalid VM type enountered: {vm.Type}.");
-					}
+					org = memidx;
 					continue;
 				}
 
@@ -1803,6 +1793,19 @@ namespace Pengu.VirtualMachine
 				
 				throw new AssemblerException(lineidx - 1, line);
             }
+
+			// write org
+			switch(vm.Type)
+			{
+				case VMType.BitLength8:
+					vm.Memory[^1] = (byte)org;
+					break;
+				case VMType.BitLength16:
+					MemoryMarshal.Write(vm.Memory.AsSpan(^2..), ref org);
+					break;
+				default:
+					throw new InvalidOperationException($"Invalid VM type enountered: {vm.Type}.");
+			}
 
 			vm.Reset();
         }

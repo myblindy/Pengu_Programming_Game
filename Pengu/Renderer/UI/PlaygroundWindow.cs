@@ -10,7 +10,7 @@ namespace Pengu.Renderer.UI
         private readonly Digit[] Digits = Enumerable.Range(0, 2).Select(_ => new Digit()).ToArray();
 
         public PlaygroundWindow(VulkanContext context, VulkanContext.GameSurface surface, VM vm) :
-            base(context, surface, "PLAY", positionX: 1, positionY: 8, chromeBackground: FontColor.BrightBlack)
+            base(context, surface, "PLAY", positionX: 1, positionY: 25, chromeBackground: FontColor.BrightBlack)
         {
             vm.RegisterInterrupt(0x45, vm => SetDigit(vm.Registers[0]));
         }

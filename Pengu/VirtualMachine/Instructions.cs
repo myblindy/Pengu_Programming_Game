@@ -1810,11 +1810,76 @@ namespace Pengu.VirtualMachine
 			vm.Reset();
         }
 
+		private static readonly HashSet<string> Instructions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+		{ 
+			"db", "org",
+			 "Nop",  "Mov",  "Int",  "Jmp",  "Cmp",  "Jl",  "Jle",  "Jg",  "Jge",  "Je",  "Jne",  "Push",  "Pop",  "Call",  "Ret",  "Shl",  "Shr",  "Or",  "And",  "Xor",  "AddI",  "SubI",  "MulI",  "DivI",  "ModI",  "Not", 		};
+
+		public static IEnumerable<SyntaxHighlightEntry> SyntaxHighlight(IEnumerable<string> lines)
+		{
+			int lineIdx = 0;
+			foreach(var line in lines)
+			{
+				for(int idx = 0; idx < line.Length; ++idx)
+					if(line[idx] == ';')
+					{
+						yield return new SyntaxHighlightEntry(SyntaxHighlightType.Comment, lineIdx, idx, line.Length - idx);
+						break;
+					}
+					else if(line[idx] == '.')
+					{
+						var endIdx = idx;
+						while(endIdx < line.Length && (char.IsLetterOrDigit(line[endIdx]) || line[endIdx] == '.')) ++endIdx;
+
+						yield return new SyntaxHighlightEntry(SyntaxHighlightType.Label, lineIdx, idx, endIdx - idx);
+						idx = endIdx;
+					}
+					else if(char.IsLetter(line[idx]))
+					{
+						var endIdx = idx;
+						while(endIdx < line.Length && char.IsLetterOrDigit(line[endIdx])) ++endIdx;
+
+						var word = line[idx..endIdx];
+						if(Instructions.Contains(word))
+							yield return new SyntaxHighlightEntry(SyntaxHighlightType.Instruction, lineIdx, idx, endIdx - idx);
+						else if(Regex.IsMatch(word, @"^r\d+$"))
+							yield return new SyntaxHighlightEntry(SyntaxHighlightType.Register, lineIdx, idx, endIdx - idx);
+
+						idx = endIdx;
+					}
+					else if(line[idx] == '0' && idx < line.Length - 2 && (line[idx + 1] == 'x' || line[idx + 1] == 'b') && char.IsLetterOrDigit(line[idx + 2]))
+					{
+						yield return new SyntaxHighlightEntry(SyntaxHighlightType.NumericBaseSpecifier, lineIdx, idx, 2);
+						++idx;
+					}
+
+				++lineIdx;
+			}
+		}
+
 		static void I8ToI4I4(int input, out int v1, out int v2)
 		{
 			v1 = input & 0xF;
 			v2 = (input & 0xF0) >> 4;
 		}
+	}
+
+	enum SyntaxHighlightType
+	{
+		Comment,
+		Label,
+		Instruction,
+		Register,
+		NumericBaseSpecifier,
+	}
+
+	struct SyntaxHighlightEntry
+	{
+		public SyntaxHighlightType Type;
+		public int Line, Start, Count;
+
+		public SyntaxHighlightEntry(SyntaxHighlightType type, int line, int start, int count) =>
+			(Type, Line, Start, Count) = (type, line, start, count);
 	}
 
 	[System.CodeDom.Compiler.GeneratedCode("Instructions.tt", null)]

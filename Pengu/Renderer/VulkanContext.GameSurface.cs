@@ -20,7 +20,16 @@ namespace Pengu.Renderer
             internal BaseWindow FocusedWindow
             {
                 get => focusedWindow;
-                set => MoveWindowToTop(focusedWindow = value);
+                set
+                {
+                    if (focusedWindow == value) return;
+
+                    var prevFocus = focusedWindow;
+                    MoveWindowToTop(focusedWindow = value);
+
+                    if (!(prevFocus is null)) prevFocus.ChromeFontStringDirty = true;
+                    if (!(focusedWindow is null)) focusedWindow.ChromeFontStringDirty = true;
+                }
             }
 
             private void MoveWindowToTop(BaseWindow window)

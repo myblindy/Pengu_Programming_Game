@@ -14,7 +14,7 @@ namespace Pengu.Renderer.UI
         protected int positionX, positionY;
 
         public VulkanContext.FontString ChromeFontString { get; private set; }
-        private bool chromeFontStringDirty = true;
+        public bool ChromeFontStringDirty = true;
 
         protected string chromeTitle;
         protected FontColor chromeBackground, chromeForeground;
@@ -33,29 +33,31 @@ namespace Pengu.Renderer.UI
              context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -1), 0.055f);
 
         public BaseWindow(VulkanContext context, VulkanContext.GameSurface surface, string title, int positionX = 0, int positionY = 0,
-            FontColor chromeBackground = FontColor.Black,
-            FontColor chromeForeground = FontColor.White)
+            FontColor chromeBackground = FontColor.Black, FontColor chromeForeground = FontColor.White)
         {
             (this.context, this.surface, chromeTitle, this.positionX, this.positionY, this.chromeBackground, this.chromeForeground) =
                 (context, surface, title, positionX, positionY, chromeBackground, chromeForeground);
+
             (ChromeFontString, ContentFontString) = (AllocateWindowFontString(), AllocateWindowFontString());
+            ContentFontString.Changed += () => FillChromeFontString(false);
         }
+
+        protected bool IsFocused => surface.FocusedWindow == this;
 
         protected abstract void FillContentFontString(bool first);
 
         bool firstFillFontString = true;
         public virtual CommandBuffer[] PreRender(uint nextImage)
         {
-            if (chromeFontStringDirty || contentFontStringDirty)
+            if (ChromeFontStringDirty || contentFontStringDirty)
             {
-                FillContentFontString(firstFillFontString);
-                if (firstFillFontString)
-                {
-                    ContentFontString.Changed += () => FillChromeFontString(false);
-                    FillChromeFontString(true);
-                }
+                if (contentFontStringDirty)
+                    FillContentFontString(firstFillFontString);
 
-                firstFillFontString = chromeFontStringDirty = contentFontStringDirty = false;
+                if (firstFillFontString || ChromeFontStringDirty)
+                    FillChromeFontString(firstFillFontString);
+
+                firstFillFontString = ChromeFontStringDirty = contentFontStringDirty = false;
             }
 
             return Array.Empty<CommandBuffer>();
@@ -72,7 +74,10 @@ namespace Pengu.Renderer.UI
                     VulkanContext.Font.PrintableSpace + chromeTitle.Replace(' ', VulkanContext.Font.PrintableSpace) + VulkanContext.Font.PrintableSpace +
                     new string('═', titleHalfOffset) + "╗\n" +
                 string.Concat(Enumerable.Repeat(line, Height)) +
-                "╚" + new string('═', Width) + "╝");
+                "╚" + new string('═', Width) + "╝",
+                overrides: IsFocused
+                    ? new[] { new FontOverride(titleHalfOffset + titleHalfOffsetExtra + 1, chromeTitle.Length + 2, chromeForeground, chromeBackground, false) }
+                    : Array.Empty<FontOverride>());
 
             if (first)
                 ChromeFontString.Set(defaultBg: chromeBackground, defaultFg: chromeForeground,

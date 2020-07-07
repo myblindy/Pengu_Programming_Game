@@ -329,7 +329,8 @@ db 0b0000111
 db 0b1111111
 db 0b1100111
 
-; temporary storage for the current counter
+; temporary storage for 
+; the current counter
 .tmp db 0
 
 org

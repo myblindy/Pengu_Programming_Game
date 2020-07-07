@@ -248,7 +248,7 @@ namespace Pengu.Renderer
                 if (IsBufferDataDirty)
                 {
                     UsedCharacters = (uint)fontStrings.Sum(fs =>
-                        (fs.Value?.Count(s => s != ' ' && s != '\n') ?? 0) + (fs.FillBackground ? 1 : 0));
+                        (fs.Value?.Count(s => s != ' ' && s != '\n' && s != '\b') ?? 0) + (fs.FillBackground ? 1 : 0));
 
                     if (MaxVertices < UsedVertices)
                     {

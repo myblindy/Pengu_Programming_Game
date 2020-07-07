@@ -409,7 +409,7 @@ namespace Pengu.Renderer
             public bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers) => throw new NotImplementedException();
 
             #region IDisposable Support
-            private bool disposedValue = false; // To detect redundant calls
+            private bool disposedValue; // To detect redundant calls
 
             protected virtual void Dispose(bool disposing)
             {

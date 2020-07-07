@@ -205,3 +205,6 @@ dotnet_diagnostic.CA1819.severity = silent
 
 # CA1307: Specify StringComparison
 dotnet_diagnostic.CA1307.severity = silent
+
+# CA1030: Use events where appropriate
+dotnet_diagnostic.CA1030.severity = silent

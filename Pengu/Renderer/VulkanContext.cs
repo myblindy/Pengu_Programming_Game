@@ -557,7 +557,7 @@ jmp .loop".Replace("\r\n", "\n"), vm);
             monospaceFont.UpdateLogic(elapsedTime);
         }
 
-        int currentFrame = 0;
+        int currentFrame;
         readonly List<CommandBuffer> SubmitCommandBuffers = new List<CommandBuffer>();
         private void DrawFrame()
         {
@@ -654,7 +654,7 @@ jmp .loop".Replace("\r\n", "\n"), vm);
         }
 
         #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
+        private bool disposedValue; // To detect redundant calls
 
         protected virtual void Dispose(bool disposing)
         {

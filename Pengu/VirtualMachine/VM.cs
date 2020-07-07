@@ -61,13 +61,7 @@ namespace Pengu.VirtualMachine
             return 1;
         }
 
-        public void RegisterInterrupt(int irq, Action<VM> action)
-        {
-            if (Interrupts.ContainsKey(irq))
-                Interrupts[irq] = action;
-            else
-                Interrupts.Add(irq, action);
-        }
+        public void RegisterInterrupt(int irq, Action<VM> action) => Interrupts[irq] = action;
 
         public void CallInterrupt(int irq)
         {

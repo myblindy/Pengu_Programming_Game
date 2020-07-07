@@ -465,9 +465,9 @@ namespace Pengu.Renderer
 
             public (FontColor bg, FontColor fg, bool selected)? TryGetOverrideForIndex(int needle)
             {
-                if (Overrides is null || Overrides.Length == 0) return null;
+                if (Overrides is null || Overrides.Count == 0) return null;
 
-                int min = 0, max = Overrides.Length, idx = (max - min) / 2;
+                int min = 0, max = Overrides.Count, idx = (max - min) / 2;
                 while (true)
                 {
                     if (Overrides[idx].start <= needle && Overrides[idx].start + Overrides[idx].count > needle)
@@ -484,7 +484,7 @@ namespace Pengu.Renderer
             }
 
             public void Set(string value = null, FontColor? defaultBg = null, FontColor? defaultFg = null, Vector2? offset = null,
-                FontOverride[] overrides = null, bool? fillBackground = null)
+                IList<FontOverride> overrides = null, bool? fillBackground = null)
             {
                 if ((value is null || value == Value) && (!defaultBg.HasValue || defaultBg == DefaultBackground) &&
                     (!defaultFg.HasValue || defaultFg == DefaultForeground) && (!offset.HasValue || offset == Offset) &&
@@ -535,7 +535,7 @@ namespace Pengu.Renderer
 
             public FontColor DefaultForeground { get; private set; }
 
-            public FontOverride[] Overrides { get; private set; }
+            public IList<FontOverride> Overrides { get; private set; }
 
             public bool FillBackground { get; private set; }
 

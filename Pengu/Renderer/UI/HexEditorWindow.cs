@@ -1,31 +1,37 @@
 ﻿using GLFW;
 using Pengu.VirtualMachine;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
 namespace Pengu.Renderer.UI
 {
-    class HexEditorWindow : BaseWindow
+    class HexEditorWindow<TMemory> : BaseWindow where TMemory : IMemory
     {
+        readonly TMemory memory;
         readonly VM vm;
 
         const int editorLineBytes = 0x15;
         const int addressSizeBytes = 2;
-        const int linesCount = 15;
+        readonly int linesCount;
 
         int selectedHalfByte;
 
         bool done, running;
 
-        public HexEditorWindow(VulkanContext context, VulkanContext.GameSurface surface, VM vm) :
-            base(context, surface, "HEX EDITOR", positionX: 8, positionY: 2,
-                chromeBackground: FontColor.Black, chromeForeground: FontColor.BrightGreen)
+        public HexEditorWindow(VulkanContext context, VulkanContext.GameSurface surface, TMemory memory,
+            int? positionX = null, int? positionY = null, string title = null, int linesCount = 15)
+            : base(context, surface, "HEX EDITOR" + (string.IsNullOrWhiteSpace(title) ? "" : $" - {title}"),
+                  positionX: positionX ?? 8, positionY: positionY ?? 2, chromeBackground: FontColor.Black, chromeForeground: FontColor.BrightGreen)
         {
-            this.vm = vm;
-            vm.RefreshRequired += _ => contentFontStringDirty = true;
-            vm.RegisterInterrupt(0, _ => { done = true; running = false; });
+            (this.memory, vm, this.linesCount) = (memory, memory as VM, linesCount);
+
+            memory.RefreshRequired += _ => contentFontStringDirty = true;
+            vm?.RegisterInterrupt(0, _ => { done = true; running = false; });
         }
+
+        readonly List<FontOverride> fontOverride = new List<FontOverride>();
 
         protected override void FillContentFontString(bool first)
         {
@@ -41,42 +47,49 @@ namespace Pengu.Renderer.UI
             var leftAddress0 = (2 + line) * frameLength + 1;
             var value0 = leftAddress0 + 4 + 3 + 3 * (halfIndexInLine / 2) + halfIndexInLine % 2;
 
-            var ipLine = Math.DivRem(vm.InstructionPointer, editorLineBytes, out var ipIndexInLine);
-            var disasmNext = InstructionSet.Disassemble(vm.Memory.AsMemory(vm.InstructionPointer), out var instructionByteSize);
+            fontOverride.Clear();
+            fontOverride.Add((headerAddress0, 2, chromeBackground, FontColor.BrightCyan, true));
+            fontOverride.Add((leftAddress0, 4, chromeBackground, FontColor.BrightCyan, true));
+            fontOverride.Add((value0, 1, chromeBackground, FontColor.BrightCyan, true));
 
-            var ip0 = (2 + ipLine) * frameLength + 3 + 5 + 3 * ipIndexInLine;
-            var ip0len = 3 * Math.Min(editorLineBytes - ipIndexInLine, instructionByteSize);
-            var ip1 = (3 + ipLine) * frameLength + 3 + 5 + 0;
-            var ip1len = 3 * instructionByteSize - ip0len;
-
-            var overrides = new FontOverride[]
-                {
-                    (headerAddress0, 2, chromeBackground, FontColor.BrightCyan, true),
-                    (leftAddress0, 4, chromeBackground, FontColor.BrightCyan, true),
-                    (value0, 1, chromeBackground, FontColor.BrightCyan, true),
-                    (ip0, ip0len, done ? FontColor.DarkGreen : FontColor.DarkRed,
-                        done ? chromeBackground : FontColor.White, false),
-                    (ip1, ip1len, done ? FontColor.DarkGreen : FontColor.DarkRed,
-                        done ? chromeBackground : FontColor.White, false),
-                };
-            Array.Sort(overrides, (a, b) => a.start.CompareTo(b.start));
-
-            var regFlags = string.Concat(vm.Registers.Select((val, idx) => $"R{idx}: 0x{val:X2} ")) +
-                $"SR: 0x{vm.StackRegister:X2} IP: 0x{vm.InstructionPointer:X2} F: {(vm.FlagCompare < 0 ? "-" : vm.FlagCompare == 0 ? "0" : "+")} ";
-            var statusLine = " NEXT ASM: " + disasmNext.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7 - regFlags.Length) + regFlags;
-
-            var disasmSelected = InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---";
+            string additionalText = null;
             var editorLineBytes31Lines = new string('─', editorLineBytes * 3 + 1);
             var addressSizeBytes22Lines = new string('─', addressSizeBytes * 2 + 2);
+
+            if (!(vm is null))
+            {
+                var ipLine = Math.DivRem(vm.InstructionPointer, editorLineBytes, out var ipIndexInLine);
+                var disasmNext = InstructionSet.Disassemble(memory.Memory.AsMemory(vm.InstructionPointer), out var instructionByteSize);
+
+                var ip0 = (2 + ipLine) * frameLength + 3 + 5 + 3 * ipIndexInLine;
+                var ip0len = 3 * Math.Min(editorLineBytes - ipIndexInLine, instructionByteSize);
+                var ip1 = (3 + ipLine) * frameLength + 3 + 5 + 0;
+                var ip1len = 3 * instructionByteSize - ip0len;
+
+                fontOverride.Add((ip0, ip0len, done ? FontColor.DarkGreen : FontColor.DarkRed, done ? chromeBackground : FontColor.White, false));
+                fontOverride.Add((ip1, ip1len, done ? FontColor.DarkGreen : FontColor.DarkRed, done ? chromeBackground : FontColor.White, false));
+
+                var regFlags = string.Concat(vm.Registers.Select((val, idx) => $"R{idx}: 0x{val:X2} ")) +
+                $"SR: 0x{vm.StackRegister:X2} IP: 0x{vm.InstructionPointer:X2} F: {(vm.FlagCompare < 0 ? "-" : vm.FlagCompare == 0 ? "0" : "+")} ";
+                var statusLine = " NEXT ASM: " + disasmNext.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7 - regFlags.Length) + regFlags;
+
+                var disasmSelected = InstructionSet.Disassemble(memory.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---";
+
+                additionalText = "\n" +
+                    addressSizeBytes22Lines + "┴" + editorLineBytes31Lines + "\n" +
+                    statusLine + "\n" +
+                    " SEL  ASM: " + disasmSelected.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7);
+            }
+
+            fontOverride.Sort((a, b) => a.start.CompareTo(b.start));
+
             ContentFontString.Set(
                 new string(' ', addressSizeBytes * 2 + 2) + "│" + string.Concat(Enumerable.Range(0, editorLineBytes).Select(idx => $" {idx:X2}")) + " \n" +
                 addressSizeBytes22Lines + "┼" + editorLineBytes31Lines + "\n" +
-                string.Concat(Enumerable.Range(0, linesCount).Select(lineIdx =>
-                    $" {lineIdx * editorLineBytes:X4} │ {string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => TryGetHexAt(vm.Memory, lineIdx * editorLineBytes + idx)))} \n")) +
-                addressSizeBytes22Lines + "┴" + editorLineBytes31Lines + "\n" +
-                statusLine + "\n" +
-                " SEL  ASM: " + disasmSelected.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7),
-                overrides: overrides);
+                string.Join("\n", Enumerable.Range(0, linesCount).Select(lineIdx =>
+                    $" {lineIdx * editorLineBytes:X4} │ {string.Join(' ', Enumerable.Range(0, editorLineBytes).Select(idx => TryGetHexAt(memory.Memory, lineIdx * editorLineBytes + idx)))} ")) +
+                additionalText,
+                overrides: fontOverride);
 
             if (first)
                 ContentFontString.Set(defaultBg: chromeBackground, defaultFg: chromeForeground,
@@ -87,27 +100,27 @@ namespace Pengu.Renderer.UI
         {
             if (key == Keys.Right && action != InputState.Release && modifiers.HasFlag(ModifierKeys.Control))
             {
-                InstructionSet.Disassemble(vm.Memory.AsMemory(selectedHalfByte / 2), out var size);
+                InstructionSet.Disassemble(memory.Memory.AsMemory(selectedHalfByte / 2), out var size);
                 if (size == 0) size = 1;
-                selectedHalfByte = Math.Min(size * 2 + selectedHalfByte & 0xFFFE, vm.Memory.Length * 2 - 2);
+                selectedHalfByte = Math.Min(size * 2 + selectedHalfByte & 0xFFFE, memory.Memory.Length * 2 - 2);
                 contentFontStringDirty = true;
                 return true;
             }
 
             if (key == Keys.Left && action != InputState.Release && selectedHalfByte > 0) { --selectedHalfByte; contentFontStringDirty = true; return true; }
-            if (key == Keys.Right && action != InputState.Release && selectedHalfByte < vm.Memory.Length * 2 - 1) { ++selectedHalfByte; contentFontStringDirty = true; return true; }
+            if (key == Keys.Right && action != InputState.Release && selectedHalfByte < memory.Memory.Length * 2 - 1) { ++selectedHalfByte; contentFontStringDirty = true; return true; }
 
             if (key == Keys.Up && action != InputState.Release && selectedHalfByte >= editorLineBytes * 2) { selectedHalfByte -= editorLineBytes * 2; contentFontStringDirty = true; return true; }
-            if (key == Keys.Down && action != InputState.Release && selectedHalfByte < vm.Memory.Length * 2 - editorLineBytes * 2) { selectedHalfByte += editorLineBytes * 2; contentFontStringDirty = true; return true; }
+            if (key == Keys.Down && action != InputState.Release && selectedHalfByte < memory.Memory.Length * 2 - editorLineBytes * 2) { selectedHalfByte += editorLineBytes * 2; contentFontStringDirty = true; return true; }
 
             void UpdateHalfByteWithNumber(int n)
             {
                 if (selectedHalfByte % 2 == 1)
-                    vm.Memory[selectedHalfByte / 2] = (byte)(vm.Memory[selectedHalfByte / 2] & 0xF0 | n);
+                    memory.Memory[selectedHalfByte / 2] = (byte)(memory.Memory[selectedHalfByte / 2] & 0xF0 | n);
                 else
-                    vm.Memory[selectedHalfByte / 2] = (byte)(vm.Memory[selectedHalfByte / 2] & 0xF | (n << 4));
+                    memory.Memory[selectedHalfByte / 2] = (byte)(memory.Memory[selectedHalfByte / 2] & 0xF | (n << 4));
 
-                if (selectedHalfByte < vm.Memory.Length * 2 - 1)
+                if (selectedHalfByte < memory.Memory.Length * 2 - 1)
                     ++selectedHalfByte;
 
                 contentFontStringDirty = true;

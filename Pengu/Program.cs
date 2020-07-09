@@ -17,11 +17,7 @@ namespace Pengu
             const bool debug = false;
 #endif
 
-            var vm = new VM(VMType.BitLength8, registers: 1, memory: 60);
-
-            //InstructionSet.Assemble(vm, @"");
-
-            using var renderer = new VulkanContext(vm, debug);
+            using var renderer = new VulkanContext(debug);
             renderer.Run();
         }
     }

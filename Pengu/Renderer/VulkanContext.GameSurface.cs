@@ -114,8 +114,16 @@ namespace Pengu.Renderer
                 FocusedWindow = window;
             }
 
-            internal void AddHexEditorWindow(VM vm) => AddNewWindow(new HexEditorWindow(context, this, vm));
+            internal void AddHexEditorWindow(IMemory mem, int? positionX = null, int? positionY = null, string title = null, int linesCount = 15)
+            {
+                if (mem is VM vm)
+                    AddNewWindow(new HexEditorWindow<VM>(context, this, vm, positionX, positionY, title, linesCount));
+                else
+                    AddNewWindow(new HexEditorWindow<MemoryComponent>(context, this, (MemoryComponent)mem, positionX, positionY, title, linesCount));
+            }
+
             internal void AddPlaygroundWindow(VM vm) => AddNewWindow(new PlaygroundWindow(context, this, vm));
+
             internal void AddAssemblerWindow(string asm, VM vm) => AddNewWindow(new AssemblerWindow(context, this, asm, vm));
         }
     }

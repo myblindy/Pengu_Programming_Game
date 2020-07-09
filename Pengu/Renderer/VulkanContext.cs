@@ -133,7 +133,7 @@ namespace Pengu.Renderer
             }
         }
 
-        public VulkanContext(VM vm, bool debug)
+        public VulkanContext(bool debug)
         {
             ContextInstance = this;
 
@@ -315,20 +315,18 @@ namespace Pengu.Renderer
             fontStringFps = monospaceFont.AllocateString(new Vector2(-1f * extent.AspectRatio, -.995f), .033f);
 
             gameSurface = new GameSurface(this);
-            gameSurface.AddHexEditorWindow(vm);
+            var vm = new VM(VMType.BitLength8, registers: 1, memory: 60);
+            var mem = new MemoryComponent(15);
+
+            var init = new byte[] { 0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x67 };
+            Array.Copy(init, mem.Memory, init.Length);
+
+            vm.RegisterInterrupt(1, vm => vm.Registers[0] = mem.Memory[vm.Registers[0]]);
+
+            gameSurface.AddHexEditorWindow(mem, title: "MEM", linesCount: 2);
+            gameSurface.AddHexEditorWindow(vm, positionY: 8, title: "CPU", linesCount: 5);
             gameSurface.AddPlaygroundWindow(vm);
             gameSurface.AddAssemblerWindow(@"
-db 0b0111111
-db 0b0000110
-db 0b1011011
-db 0b1001111
-db 0b1100110
-db 0b1101101
-db 0b1111101
-db 0b0000111
-db 0b1111111
-db 0b1100111
-
 ; temporary storage for 
 ; the current counter
 .tmp db 0
@@ -343,13 +341,13 @@ mov [.tmp] r0
 
 ; first digit
 divi r0 10
-mov r0 [r0]
+int 1
 int 0x45
 
 ; second digit
 mov r0 [.tmp]
 modi r0 10
-mov r0 [r0]
+int 1
 addi r0 0b10000000
 int 0x45
 

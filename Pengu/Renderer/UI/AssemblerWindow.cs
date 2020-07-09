@@ -47,7 +47,7 @@ namespace Pengu.Renderer.UI
 
             foreach (var result in InstructionSet.SyntaxHighlight(lines.Skip(verticalOffset).Take(editorLineRows)))
             {
-                if (offset == 0 && lineIndex < result.Line - verticalOffset)
+                if (offset == 0 && lineIndex < result.Line)
                     offset = lines[verticalOffset + lineIndex].Length == lineCharacterIndex ? 1 : 2;
 
                 var realOffset = offset + (lineIndex != result.Line ? 0 :

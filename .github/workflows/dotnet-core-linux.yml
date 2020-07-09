@@ -43,6 +43,7 @@ jobs:
 
     # Build the application
     - name: Build the application
-      run: dotnet build -c $env:Configuration /p:Platform=x64 Pengu/Pengu.csproj
+      run: echo $env:Configuration
+           dotnet build -c $env:Configuration /p:Platform=x64 Pengu/Pengu.csproj
       env:
         Configuration: ${{ matrix.configuration }}

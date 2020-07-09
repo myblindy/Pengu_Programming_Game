@@ -33,16 +33,16 @@ jobs:
 
     # Restore the application to populate the obj folder with RuntimeIdentifiers
     - name: Restore the application
-      run: dotnet restore
+      run: dotnet restore Pengu/Pengu.csproj
       env:
         Configuration: ${{ matrix.configuration }}
     
     # Execute all unit tests in the solution
     - name: Execute unit tests
-      run: dotnet test
+      run: dotnet test 
 
     # Build the application
     - name: Build the application
-      run: dotnet build -c $env:Configuration /p:Platform=x64
+      run: dotnet build -c $env:Configuration /p:Platform=x64 Pengu/Pengu.csproj
       env:
         Configuration: ${{ matrix.configuration }}

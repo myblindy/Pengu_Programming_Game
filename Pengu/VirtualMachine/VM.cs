@@ -8,7 +8,7 @@ namespace Pengu.VirtualMachine
 {
     public enum VMType { BitLength8, BitLength16 };
 
-    public class VM
+    public class VM : IMemory
     {
         public int[] Registers { get; }
         public ushort StackRegister { get; set; }
@@ -20,7 +20,7 @@ namespace Pengu.VirtualMachine
 
         private readonly Dictionary<int, Action<VM>> Interrupts = new Dictionary<int, Action<VM>>();
 
-        public event Action<VM> RefreshRequired;
+        public event Action<IMemory> RefreshRequired;
         public void FireRefreshRequired() => RefreshRequired?.Invoke(this);
 
         public VM(VMType type, int registers, int memory)

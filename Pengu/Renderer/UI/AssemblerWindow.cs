@@ -1,4 +1,5 @@
 ﻿using GLFW;
+using MoreLinq;
 using Pengu.VirtualMachine;
 using System;
 using System.Collections.Generic;
@@ -77,7 +78,9 @@ namespace Pengu.Renderer.UI
 
             var value = string.Join('\n', lines.Skip(verticalOffset).Take(editorLineRows)
                 .Select((val, idx) => idx == lineIndex
-                    ? lineCharacterIndex == val.Length ? $"{val}_" : $"{val[..(lineCharacterIndex + 1)]}\b_{val[(lineCharacterIndex + 1)..]}"
+                    ? lineCharacterIndex == val.Length
+                        ? $"{val}_"
+                        : string.Concat(val.AsSpan(0, lineCharacterIndex + 1), "\b_".AsSpan(), val.AsSpan(lineCharacterIndex + 1))
                     : val));
             ContentFontString.Set(value, overrides: syntaxHighlightOverride);
 
@@ -135,18 +138,52 @@ namespace Pengu.Renderer.UI
 
             if (key == Keys.Enter && action != InputState.Release)
             {
-                if (lineCharacterIndex == lines[verticalOffset + lineIndex].Length)
+                var line = lines[verticalOffset + lineIndex];
+                if (lineCharacterIndex == line.Length)
                     lines.Insert(verticalOffset + lineIndex + 1, "");
                 else
                 {
-                    var line = lines[verticalOffset + lineIndex];
                     lines.Insert(verticalOffset + lineIndex + 1, line[lineCharacterIndex..]);
                     lines[verticalOffset + lineIndex] = line[..lineCharacterIndex];
                 }
 
                 (lineIndex, lineCharacterIndex) = (lineIndex + 1, 0);
-                syntaxHighlightDirty = true;
-                contentFontStringDirty = true;
+                syntaxHighlightDirty = contentFontStringDirty = true;
+            }
+
+            if (key == Keys.Backspace && action != InputState.Release)
+            {
+                var line = lines[verticalOffset + lineIndex];
+                if (lineCharacterIndex > 0)
+                {
+                    lines[verticalOffset + lineIndex] = string.Concat(line.AsSpan(0, lineCharacterIndex - 1), line.AsSpan(lineCharacterIndex--));
+                    syntaxHighlightDirty = contentFontStringDirty = true;
+                }
+                else if (lineIndex + verticalOffset > 0)
+                {
+                    var oldLength = lines[verticalOffset + lineIndex - 1].Length;
+                    lines[verticalOffset + lineIndex - 1] += line;
+                    lines.RemoveAt(verticalOffset + lineIndex);
+
+                    (lineIndex, lineCharacterIndex) = (lineIndex - 1, oldLength);
+                    syntaxHighlightDirty = contentFontStringDirty = true;
+                }
+            }
+
+            if (key == Keys.Delete && action != InputState.Release)
+            {
+                var line = lines[verticalOffset + lineIndex];
+                if (lineCharacterIndex < line.Length)
+                {
+                    lines[verticalOffset + lineIndex] = string.Concat(line.AsSpan(0, lineCharacterIndex), line.AsSpan(lineCharacterIndex + 1));
+                    syntaxHighlightDirty = contentFontStringDirty = true;
+                }
+                else if (lineIndex + verticalOffset < lines.Count - 1)
+                {
+                    lines[verticalOffset + lineIndex] += lines[verticalOffset + lineIndex + 1];
+                    lines.RemoveAt(verticalOffset + lineIndex + 1);
+                    syntaxHighlightDirty = contentFontStringDirty = true;
+                }
             }
 
             // ensure cursor visible

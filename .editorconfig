@@ -208,3 +208,6 @@ dotnet_diagnostic.CA1307.severity = silent
 
 # CA1030: Use events where appropriate
 dotnet_diagnostic.CA1030.severity = silent
+
+# CA1305: Specify IFormatProvider
+dotnet_diagnostic.CA1305.severity = silent

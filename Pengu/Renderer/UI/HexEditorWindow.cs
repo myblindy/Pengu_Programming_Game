@@ -162,7 +162,8 @@ namespace Pengu.Renderer.UI
             {
                 vm.RunNextInstruction(cycles);
                 contentFontStringDirty = true;
-                partialElapsedTime = TimeSpan.FromTicks((long)(totalTime.TotalMilliseconds - cycles * InstructionRunFrequencyMSec * TimeSpan.TicksPerMillisecond));
+                partialElapsedTime = TimeSpan.FromTicks((long)(
+                    totalTime.TotalMilliseconds - cycles * InstructionRunFrequencyMSec * TimeSpan.TicksPerMillisecond));
             }
             else
                 partialElapsedTime += elapsedTime;

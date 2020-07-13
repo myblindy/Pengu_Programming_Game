@@ -2,56 +2,14 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <LangVersion>preview</LangVersion>
     <StartupObject>Pengu.Program</StartupObject>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Platforms>AnyCPU;x86;x64</Platforms>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants></DefineConstants>
-    <NoWarn>1701;1702;CA1305</NoWarn>
-    <Prefer32Bit>true</Prefer32Bit>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <DefineConstants />
-    <NoWarn>1701;1702;CA1305</NoWarn>
-    <Prefer32Bit>true</Prefer32Bit>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
-    <DefineConstants />
-    <NoWarn>1701;1702;CA1305</NoWarn>
-    <Prefer32Bit>true</Prefer32Bit>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <None Remove="BLanguageGrammar.interp" />
-    <None Remove="BLanguageGrammar.r.dot" />
-    <None Remove="BLanguageGrammar.tokens" />
-    <None Remove="BLanguageGrammarLexer.ID.dot" />
-    <None Remove="BLanguageGrammarLexer.interp" />
-    <None Remove="BLanguageGrammarLexer.tokens" />
-    <None Remove="BLanguageGrammarLexer.T__0.dot" />
-    <None Remove="BLanguageGrammarLexer.WS.dot" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.3.0-beta1.final">
@@ -64,9 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="deps\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Media\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -102,8 +57,16 @@
 
   <ItemGroup>
     <Reference Include="GLFW.NET">
-      <HintPath>deps\GLFW.NET.dll</HintPath>
+      <HintPath>..\Pengu.Dependencies\GLFW.NET.dll</HintPath>
     </Reference>
   </ItemGroup>
+
+  <!--<ItemGroup>
+    <Reference Include="GLFW.NET">
+      <HintPath>..\Pengu.Dependencies\GLFW.NET.dll</HintPath>
+    </Reference>
+  </ItemGroup>-->
+
+  <Import Project="..\Pengu.Dependencies\Pengu.Dependencies.projitems" Label="Shared" />
 
 </Project>

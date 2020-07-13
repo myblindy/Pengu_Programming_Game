@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "title": "JSON Schema for the exercise JSON description files",
+  "type": "object",
+  "definitions": {
+    "cpu": {
+      "type": "object",
+      "required": [
+        "name",
+        "registerCount",
+        "memory"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the CPU."
+        },
+        "registerCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The number of registers r0, r1, ... belonging to this CPU."
+        },
+        "memory": {
+          "$ref": "#/definitions/memory"
+        },
+        "interrupts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "irq",
+              "type",
+              "inputRegister",
+              "memoryName"
+            ],
+            "properties": {
+              "irq": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The interrupt vector number."
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "read_memory",
+                  "write_memory",
+                  "read_write_memory"
+                ]
+              },
+              "inputRegister": {
+                "type": "string",
+                "pattern": "^r\\d+$"
+              },
+              "outputRegister": {
+                "type": "string",
+                "pattern": "^r\\d+$"
+              },
+              "memoryName": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "memory": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "integer",
+          "description": "The size of this memory."
+        },
+        "data": {
+          "type": "string",
+          "pattern": "^([0-9A-Fa-f]{2})+$",
+          "description": "The data this memory is initialized with."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of this memory."
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "size",
+            "name"
+          ]
+        },
+        {
+          "required": [
+            "data",
+            "name"
+          ]
+        },
+        {
+          "required": [
+            "data",
+            "size",
+            "name"
+          ]
+        }
+      ]
+    },
+    "sevenDigitDisplay": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The exercise name."
+    },
+    "cpus": {
+      "type": "array",
+      "description": "The list of CPUs in this exercise.",
+      "items": {
+        "$ref": "#/definitions/cpu"
+      }
+    },
+    "memories": {
+      "type": "array",
+      "description": "The list of memories in this exercise",
+      "items": {
+        "$ref": "#/definitions/memory"
+      }
+    },
+    "sevenDigitDisplays": {
+      "type": "array",
+      "description": "The list of seven digit displays in this exercise",
+      "items": {
+        "$ref": "#/definitions/sevenDigitDisplay"
+      }
+    }
+  }
+}

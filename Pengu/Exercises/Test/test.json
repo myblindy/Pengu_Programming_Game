@@ -1,0 +1,52 @@
+{
+  "$schema": "../schema.json",
+  "name": "arf",
+  "cpus": [
+    {
+      "name": "CPU0",
+      "registerCount": 1,
+      "memory": {
+        "name": "cpu_memory",
+        "data": "aabbccdd5a00",
+        "size": 30
+      },
+      "interrupts": [
+        {
+          "irq": 40,
+          "type": "read_memory",
+          "inputRegister": "r0",
+          "outputRegister": "r0",
+          "memoryName": "mem0"
+        },
+        {
+          "irq": 41,
+          "type": "read_memory",
+          "inputRegister": "r0",
+          "outputRegister": "r0",
+          "memoryName": "mem1"
+        },
+        {
+          "irq": 42,
+          "type": "write_memory",
+          "inputRegister": "r0",
+          "memoryName": "sevenDigitDisplay0"
+        }
+      ]
+    }
+  ],
+  "memories": [
+    {
+      "name": "mem0",
+      "size": 5
+    },
+    {
+      "name": "mem1",
+      "size": 10
+    }
+  ],
+  "sevenDigitDisplays": [
+    {
+      "name": "sevenDigitDisplay0"
+    }
+  ]
+}

@@ -3,8 +3,69 @@
   "title": "JSON Schema for the exercise JSON description files",
   "type": "object",
   "definitions": {
+    "fontColor": {
+      "type": "string",
+      "enum": [
+        "Black",
+        "DarkBlue",
+        "DarkGreen",
+        "DarkCyan",
+        "DarkRed",
+        "DarkMagenta",
+        "DarkYellow",
+        "DarkWhite",
+        "BrightBlack",
+        "BrightBlue",
+        "BrightGreen",
+        "BrightCyan",
+        "BrightRed",
+        "BrightMagenta",
+        "BrightYellow",
+        "White",
+        "Transparent"
+      ]
+    },
+    "window": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "hex_editor",
+            "assembler",
+            "playground"
+          ]
+        },
+        "memoryName": {
+          "type": "string"
+        },
+        "positionX": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "positionY": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "backColor": {
+          "$ref": "#/definitions/fontColor"
+        },
+        "foreColor": {
+          "$ref": "#/definitions/fontColor"
+        },
+        "linesCount": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "dataString": {
+      "type": "string",
+      "pattern": "^(([a-fA-F0-9]{2}\\s*)+|'.*'|0x[a-fA-F0-9]{1,2}\\s*(,\\s*0x[a-fA-F0-9]{1,2}\\s*)*|)$"
+    },
     "cpu": {
       "type": "object",
+      "description": "A CPU in the exercise.",
       "required": [
         "name",
         "registerCount",
@@ -25,8 +86,10 @@
         },
         "interrupts": {
           "type": "array",
+          "description": "A list of interrupts in this exercise.",
           "items": {
             "type": "object",
+            "description": "An interrupt definition in this exercise.",
             "required": [
               "irq",
               "type",
@@ -41,6 +104,7 @@
               },
               "type": {
                 "type": "string",
+                "description": "This describes what kind of interrupt this is.",
                 "enum": [
                   "read_memory",
                   "write_memory",
@@ -49,14 +113,17 @@
               },
               "inputRegister": {
                 "type": "string",
+                "description": "This describes the register used to drive the interrupt as an input, i.e. the address to read.",
                 "pattern": "^r\\d+$"
               },
               "outputRegister": {
                 "type": "string",
+                "description": "This describes what register to store the result, if any, in. Write-only interrupts don't need this.",
                 "pattern": "^r\\d+$"
               },
               "memoryName": {
-                "type": "string"
+                "type": "string",
+                "description": "This describes the memory component (or compatible device) this interrupt interacts with."
               }
             }
           }
@@ -65,19 +132,22 @@
     },
     "memory": {
       "type": "object",
+      "description": "A memory component in this exercise.",
       "properties": {
         "size": {
           "type": "integer",
           "description": "The size of this memory."
         },
         "data": {
-          "type": "string",
-          "pattern": "^([0-9A-Fa-f]{2})+$",
+          "$ref": "#/definitions/dataString",
           "description": "The data this memory is initialized with."
         },
         "name": {
           "type": "string",
           "description": "The name of this memory."
+        },
+        "readOnly": {
+          "type": "boolean"
         }
       },
       "anyOf": [
@@ -104,10 +174,63 @@
     },
     "sevenDigitDisplay": {
       "type": "object",
-      "required": ["name"],
+      "description": "This describes a 7-digit display in this exercise. This is also a 1 byte memory component.",
+      "required": [
+        "name"
+      ],
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "The name of the 7-digit display."
+        }
+      }
+    },
+    "solution": {
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "memoryName": {
+                "type": "string"
+              },
+              "memoryIndex": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "data": {
+                "$ref": "#/definitions/dataString"
+              }
+            }
+          }
+        },
+        "expectations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "expectationGroup": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "memoryName": {
+                      "type": "string"
+                    },
+                    "memoryIndex": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "data": {
+                      "$ref": "#/definitions/dataString"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -126,16 +249,30 @@
     },
     "memories": {
       "type": "array",
-      "description": "The list of memories in this exercise",
+      "description": "The list of memories in this exercise.",
       "items": {
         "$ref": "#/definitions/memory"
       }
     },
     "sevenDigitDisplays": {
       "type": "array",
-      "description": "The list of seven digit displays in this exercise",
+      "description": "The list of seven digit displays in this exercise.",
       "items": {
         "$ref": "#/definitions/sevenDigitDisplay"
+      }
+    },
+    "solutions": {
+      "type": "array",
+      "description": "The list of solutions for this exercise.",
+      "items": {
+        "$ref": "#/definitions/solution"
+      }
+    },
+    "windows": {
+      "type": "array",
+      "description": "The list of open windows for this exercise",
+      "items": {
+        "$ref": "#/definitions/window"
       }
     }
   }

@@ -18,6 +18,7 @@ using Buffer = SharpVk.Buffer;
 using Version = SharpVk.Version;
 using Constants = SharpVk.Constants;
 using Exception = System.Exception;
+using Pengu.Support;
 
 namespace Pengu.Renderer
 {
@@ -359,7 +360,7 @@ jmp .loop".Replace("\r\n", "\n"), vm);
         ShaderModule CreateShaderModule(string filePath)
         {
             var fileBytes = File.ReadAllBytes(Path.Combine("Shaders", filePath));
-            var shaderData = new uint[(int)Math.Ceiling(fileBytes.Length / 4f)];
+            var shaderData = new uint[fileBytes.Length.CeilingIntegerDivide(4)];
 
             System.Buffer.BlockCopy(fileBytes, 0, shaderData, 0, fileBytes.Length);
 

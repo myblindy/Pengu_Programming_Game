@@ -1,0 +1,107 @@
+{
+  "$schema": "../schema.json",
+  "name": "Test Exercise",
+  "cpus": [
+    {
+      "name": "CPU0",
+      "registerCount": 1,
+      "memory": {
+        "name": "cpu_memory",
+        "size": 30
+      },
+      "interrupts": [
+        {
+          "irq": 40,
+          "type": "read_memory",
+          "inputRegister": "r0",
+          "outputRegister": "r0",
+          "memoryName": "mem0"
+        },
+        {
+          "irq": 41,
+          "type": "write_memory",
+          "inputRegister": "r0",
+          "memoryName": "sevenDigitDisplay0"
+        }
+      ]
+    }
+  ],
+  "memories": [
+    {
+      "name": "mem0",
+      "data": "0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x67",
+      "readOnly": true
+    }
+  ],
+  "sevenDigitDisplays": [
+    {
+      "name": "sevenDigitDisplayLeft"
+    },
+    {
+      "name": "sevenDigitDisplayRight"
+    }
+  ],
+  "windows": [
+    {
+      "type": "hex_editor",
+      "memoryName": "cpu_memory",
+      "positionX": 0,
+      "positionY": 0,
+      "backColor": "Black",
+      "foreColor": "BrightGreen",
+      "linesCount": 15
+    },
+    {
+      "type": "hex_editor",
+      "memoryName": "mem0",
+      "positionX": 0,
+      "positionY": 16,
+      "backColor": "Black",
+      "foreColor": "BrightGreen",
+      "linesCount": 1
+    },
+    {
+      "type": "assembler",
+      "memoryName": "cpu_memory",
+      "positionX": 40,
+      "positionY": 0,
+      "backColor": "Black",
+      "foreColor": "BrightGreen",
+      "linesCount": 30
+    },
+    {
+      "type": "playground",
+      "positionX": 0,
+      "positionY": 20,
+      "backColor": "BrightBlack",
+      "foreColor": "White"
+    }
+  ],
+  "solutions": [
+    {
+      "inputs": [
+        {
+          "memoryName": "cpu_memory",
+          "memoryIndex": 0,
+          "data": "0x55"
+        }
+      ],
+      "expectations": [
+        {
+          "expectationGroup": [
+            {
+              "memoryName": "sevenDigitDisplayLeft",
+              "memoryIndex": 0,
+              "data": "0x8"
+            },
+            {
+              "memoryName": "sevenDigitDisplayRight",
+              "memoryIndex": 0,
+              "data": "0x5"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

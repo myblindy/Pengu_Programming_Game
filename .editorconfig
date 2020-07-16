@@ -211,3 +211,6 @@ dotnet_diagnostic.CA1030.severity = silent
 
 # CA1305: Specify IFormatProvider
 dotnet_diagnostic.CA1305.severity = silent
+
+# CA18125: class never instantiated
+dotnet_diagnostic.CA1812.severity = silent

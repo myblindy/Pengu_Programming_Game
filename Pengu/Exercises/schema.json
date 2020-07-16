@@ -56,6 +56,9 @@
         "linesCount": {
           "type": "integer",
           "minimum": 1
+        },
+        "loadFile": {
+          "type": "string"
         }
       }
     },
@@ -108,7 +111,8 @@
                 "enum": [
                   "read_memory",
                   "write_memory",
-                  "read_write_memory"
+                  "read_write_memory",
+                  "write_memory_literal"
                 ]
               },
               "inputRegister": {
@@ -118,8 +122,12 @@
               },
               "outputRegister": {
                 "type": "string",
-                "description": "This describes what register to store the result, if any, in. Write-only interrupts don't need this.",
+                "description": "This describes what register to store the result.",
                 "pattern": "^r\\d+$"
+              },
+              "outputLiteral": {
+                "type": "integer",
+                "minimum": 0
               },
               "memoryName": {
                 "type": "string",

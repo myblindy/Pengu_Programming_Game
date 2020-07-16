@@ -14,7 +14,6 @@ namespace Pengu.Support
 {
     class StringDataJsonConverter : JsonConverter<byte[]>
     {
-        [return: MaybeNull]
         public override byte[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             var result = new List<byte>();
@@ -57,10 +56,10 @@ namespace Pengu.Support
 
     class Memory
     {
-        public string Name { get; set; }
-        public int Size { get; set; }
+        public string? Name { get; set; }
+        public int? Size { get; set; }
         [JsonConverter(typeof(StringDataJsonConverter))]
-        public byte[] Data { get; set; }
+        public byte[]? Data { get; set; }
         public bool ReadOnly { get; set; }
     }
 
@@ -73,28 +72,35 @@ namespace Pengu.Support
         WriteMemory,
         [EnumMember(Value = "read_write_memory")]
         ReadWriteMemory,
+        [EnumMember(Value = "write_memory_literal")]
+        WriteMemoryLiteral,
     }
 
     class Interrupt
     {
         public int Irq { get; set; }
         public InterruptType Type { get; set; }
-        public string InputRegister { get; set; }
-        public string OutputRegister { get; set; }
-        public string MemoryName { get; set; }
+        public string? InputRegister { get; set; }
+        [JsonIgnore]
+        public int? InputRegisterNumber => string.IsNullOrWhiteSpace(InputRegister) ? new int?() : int.Parse(InputRegister.AsSpan(1));
+        public string? OutputRegister { get; set; }
+        [JsonIgnore]
+        public int? OutputRegisterNumber => string.IsNullOrWhiteSpace(OutputRegister) ? new int?() : int.Parse(OutputRegister.AsSpan(1));
+        public int? OutputLiteral { get; set; }
+        public string? MemoryName { get; set; }
     }
 
     class SevenDigitDisplay
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
     }
 
     class CPU
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public int RegisterCount { get; set; }
-        public Memory Memory { get; set; }
-        public List<Interrupt> Interrupts { get; set; }
+        public Memory? Memory { get; set; }
+        public List<Interrupt>? Interrupts { get; set; }
     }
 
     [DataContract]
@@ -109,54 +115,65 @@ namespace Pengu.Support
     class Window
     {
         public WindowType Type { get; set; }
-        public string MemoryName { get; set; }
+        public string? MemoryName { get; set; }
         public int? PositionX { get; set; }
         public int? PositionY { get; set; }
         public FontColor BackColor { get; set; }
         public FontColor ForeColor { get; set; }
         public int? LinesCount { get; set; }
+        public string? LoadFile { get; set; }
     }
 
     class Input
     {
-        public string MemoryName { get; set; }
+        public string? MemoryName { get; set; }
         public int MemoryIndex { get; set; }
         [JsonConverter(typeof(StringDataJsonConverter))]
-        public byte[] Data { get; set; }
+        public byte[]? Data { get; set; }
     }
 
     class ExpectationItem
     {
-        public string MemoryName { get; set; }
+        public string? MemoryName { get; set; }
         public int MemoryIndex { get; set; }
         [JsonConverter(typeof(StringDataJsonConverter))]
-        public byte[] Data { get; set; }
+        public byte[]? Data { get; set; }
     }
 
     class Expectation
     {
-        public List<ExpectationItem> ExpectationGroup { get; set; }
+        public List<ExpectationItem>? ExpectationGroup { get; set; }
     }
 
     class Solution
     {
-        public List<Input> Inputs { get; set; }
-        public List<Expectation> Expectations { get; set; }
+        public List<Input>? Inputs { get; set; }
+        public List<Expectation>? Expectations { get; set; }
     }
 
     class Exercise
     {
-        public string Name { get; set; }
-        public List<CPU> CPUs { get; set; }
-        public List<Memory> Memories { get; set; }
-        public List<SevenDigitDisplay> SevenDigitDisplays { get; set; }
-        public List<Window> Windows { get; set; }
-        public List<Solution> Solutions { get; set; }
+        [JsonIgnore]
+        public string? Path { get; set; }
+        public string? Name { get; set; }
+        public List<CPU>? CPUs { get; set; }
+        public List<Memory>? Memories { get; set; }
+        public List<SevenDigitDisplay>? SevenDigitDisplays { get; set; }
+        public List<Window>? Windows { get; set; }
+        public List<Solution>? Solutions { get; set; }
+
+        public FileStream OpenAssociatedFile(string file) =>
+            File.OpenRead(System.IO.Path.Combine(Path!, file));
+        public string ReadAllAssociatedFile(string file) =>
+            File.ReadAllText(System.IO.Path.Combine(Path!, file)).Replace("\r", "");
     }
 
     class Exercises
     {
-        public static Exercise[] List;
+        public static Exercise[]? List;
+
+        public static Exercise Get(string name) =>
+            List!.First(e => e.Name == name);
 
         public static async Task ReadExercises()
         {
@@ -172,7 +189,12 @@ namespace Pengu.Support
 
             foreach (var path in Directory.EnumerateDirectories("Exercises"))
                 using (var file = File.OpenRead(Path.Combine(path, "description.json")))
-                    results.Add(await JsonSerializer.DeserializeAsync<Exercise>(file, options).ConfigureAwait(false));
+                {
+                    var exercise = await JsonSerializer.DeserializeAsync<Exercise>(file, options).ConfigureAwait(false);
+                    exercise.Path = path;
+
+                    results.Add(exercise);
+                }
 
             List = results.ToArray();
         }

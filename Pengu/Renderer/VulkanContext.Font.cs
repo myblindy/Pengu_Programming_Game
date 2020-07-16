@@ -17,6 +17,7 @@ using MoreLinq;
 using SixLabors.ImageSharp;
 using SharpVk.Interop.Khronos;
 using System.Net.NetworkInformation;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Pengu.Renderer
 {
@@ -218,6 +219,7 @@ namespace Pengu.Renderer
                     });
             }
 
+            [MemberNotNull(nameof(vertexIndexBuffer), nameof(vertexIndexBufferMemory), nameof(stagingVertexIndexBuffer), nameof(stagingIndexVertexBufferMemory))]
             private void CreateVertexIndexBuffers()
             {
                 var vertexSize = (ulong)(FontVertex.Size * MaxVertices);
@@ -243,7 +245,7 @@ namespace Pengu.Renderer
 
             public unsafe CommandBuffer[] PreRender(uint nextImage)
             {
-                CommandBuffer resultCommandBuffer = default;
+                CommandBuffer? resultCommandBuffer = default;
 
                 if (IsBufferDataDirty)
                 {
@@ -483,8 +485,8 @@ namespace Pengu.Renderer
                 }
             }
 
-            public void Set(string value = null, FontColor? defaultBg = null, FontColor? defaultFg = null, Vector2? offset = null,
-                IList<FontOverride> overrides = null, bool? fillBackground = null)
+            public void Set(string? value = null, FontColor? defaultBg = null, FontColor? defaultFg = null, Vector2? offset = null,
+                IList<FontOverride>? overrides = null, bool? fillBackground = null)
             {
                 if ((value is null || value == Value) && (!defaultBg.HasValue || defaultBg == DefaultBackground) &&
                     (!defaultFg.HasValue || defaultFg == DefaultForeground) && (!offset.HasValue || offset == Offset) &&
@@ -529,13 +531,13 @@ namespace Pengu.Renderer
                 font.IsBufferDataDirty = true;
             }
 
-            public string Value { get; private set; }
+            public string? Value { get; private set; }
 
             public FontColor DefaultBackground { get; private set; }
 
             public FontColor DefaultForeground { get; private set; }
 
-            public IList<FontOverride> Overrides { get; private set; }
+            public IList<FontOverride>? Overrides { get; private set; }
 
             public bool FillBackground { get; private set; }
 
@@ -552,7 +554,7 @@ namespace Pengu.Renderer
 
             float size;
 
-            public event Action Changed;
+            public event Action? Changed;
 
             public float Size { get => size; set { size = value; font.IsBufferDataDirty = true; font.IsCommandBufferDirty = true; } }
         }
@@ -654,7 +656,7 @@ namespace Pengu.Renderer
             this.selected = selected;
         }
 
-        public override bool Equals(object obj) => obj is FontOverride other && Equals(other);
+        public override bool Equals(object? obj) => obj is FontOverride other && Equals(other);
         public override int GetHashCode() => HashCode.Combine(start, count, bg, fg, selected);
 
         public void Deconstruct(out int start, out int count, out FontColor bg, out FontColor fg, out bool selected)

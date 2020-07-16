@@ -12,7 +12,8 @@ namespace Pengu.VirtualMachine
     {
         public int[] Registers { get; }
         public ushort StackRegister { get; set; }
-        public byte[] Memory { get; }
+        public IList<byte> Memory { get; }
+        public string MemoryName { get; }
         public ushort StartInstructionPointer { get; set; }
         public ushort InstructionPointer { get; set; }
         public sbyte FlagCompare { get; set; }
@@ -20,14 +21,28 @@ namespace Pengu.VirtualMachine
 
         private readonly Dictionary<int, Action<VM>> Interrupts = new Dictionary<int, Action<VM>>();
 
-        public event Action<IMemory> RefreshRequired;
+        public event Action<IMemory>? RefreshRequired;
         public void FireRefreshRequired() => RefreshRequired?.Invoke(this);
 
-        public VM(VMType type, int registers, int memory)
+        public VM(VMType type, int registers, string memoryName, int? memorySize = default, byte[]? memoryData = null)
         {
+            static byte[] CloneMemoryData(int memorySize, byte[] memoryData)
+            {
+                var result = new byte[Math.Max(memorySize, memoryData.Length)];
+                Array.Copy(memoryData, result, memoryData.Length);
+                return result;
+            }
+
             Type = type;
             Registers = new int[registers];
-            Memory = new byte[memory];
+            MemoryName = memoryName;
+            Memory = memoryData is null
+                ? memorySize.HasValue
+                    ? new byte[memorySize.Value]
+                    : throw new ArgumentException("Cannot create a memory with no size and no data")
+                : memorySize.HasValue
+                    ? CloneMemoryData(memorySize.Value, memoryData)
+                    : (byte[])memoryData.Clone();
         }
 
         public void Reset()
@@ -36,11 +51,11 @@ namespace Pengu.VirtualMachine
             {
                 case VMType.BitLength8:
                     InstructionPointer = Memory[^1];
-                    StackRegister = (ushort)(Memory.Length - 2);
+                    StackRegister = (ushort)(Memory.Count - 2);
                     break;
                 case VMType.BitLength16:
-                    InstructionPointer = BitConverter.ToUInt16(Memory, Memory.Length - 2);
-                    StackRegister = (ushort)(Memory.Length - 3);
+                    InstructionPointer = BitConverter.ToUInt16((byte[])Memory, Memory.Count - 2);
+                    StackRegister = (ushort)(Memory.Count - 3);
                     break;
                 default:
                     throw new InvalidOperationException($"Unexpected VM type: {Type}");
@@ -49,7 +64,7 @@ namespace Pengu.VirtualMachine
 
         public ushort RunNextInstruction(int cycles = 1)
         {
-            while (cycles-- > 0 && InstructionPointer < Memory.Length - 1)
+            while (cycles-- > 0 && InstructionPointer < Memory.Count - 1)
             {
                 ushort nextIp = ushort.MaxValue;
                 var instruction = Memory[InstructionPointer];

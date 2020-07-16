@@ -9,6 +9,8 @@
     <Platforms>AnyCPU;x86;x64</Platforms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Prefer32Bit>false</Prefer32Bit>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -73,6 +75,6 @@
 
   <Import Project="..\Pengu.Dependencies\Pengu.Dependencies.projitems" Label="Shared" />
 
-  <ProjectExtensions><VisualStudio><UserProperties exercises_4test_4test_1json__JsonSchema="..\schema.json" /></VisualStudio></ProjectExtensions>
+  <ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
 
 </Project>

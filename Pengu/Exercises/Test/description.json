@@ -6,29 +6,37 @@
       "name": "CPU0",
       "registerCount": 1,
       "memory": {
-        "name": "cpu_memory",
-        "size": 30
+        "name": "CPU0",
+        "size": 50
       },
       "interrupts": [
         {
-          "irq": 40,
+          "irq": 1,
           "type": "read_memory",
           "inputRegister": "r0",
           "outputRegister": "r0",
-          "memoryName": "mem0"
+          "memoryName": "MEM0"
         },
         {
-          "irq": 41,
-          "type": "write_memory",
+          "irq": 45,
+          "type": "write_memory_literal",
           "inputRegister": "r0",
-          "memoryName": "sevenDigitDisplay0"
+          "outputLiteral": 0,
+          "memoryName": "sevenDigitDisplayLeft"
+        },
+        {
+          "irq": 46,
+          "type": "write_memory_literal",
+          "inputRegister": "r0",
+          "outputLiteral": 0,
+          "memoryName": "sevenDigitDisplayRight"
         }
       ]
     }
   ],
   "memories": [
     {
-      "name": "mem0",
+      "name": "MEM0",
       "data": "0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x67",
       "readOnly": true
     }
@@ -44,30 +52,31 @@
   "windows": [
     {
       "type": "hex_editor",
-      "memoryName": "cpu_memory",
-      "positionX": 0,
-      "positionY": 0,
+      "memoryName": "CPU0",
+      "positionX": 2,
+      "positionY": 2,
       "backColor": "Black",
       "foreColor": "BrightGreen",
-      "linesCount": 15
+      "linesCount": 9
     },
     {
       "type": "hex_editor",
-      "memoryName": "mem0",
-      "positionX": 0,
-      "positionY": 16,
+      "memoryName": "MEM0",
+      "positionX": 2,
+      "positionY": 18,
       "backColor": "Black",
       "foreColor": "BrightGreen",
       "linesCount": 1
     },
     {
       "type": "assembler",
-      "memoryName": "cpu_memory",
+      "memoryName": "CPU0",
       "positionX": 40,
-      "positionY": 0,
+      "positionY": 2,
       "backColor": "Black",
       "foreColor": "BrightGreen",
-      "linesCount": 30
+      "linesCount": 30,
+      "loadFile": "program.pasm"
     },
     {
       "type": "playground",
@@ -81,7 +90,7 @@
     {
       "inputs": [
         {
-          "memoryName": "cpu_memory",
+          "memoryName": "CPU0",
           "memoryIndex": 0,
           "data": "0x55"
         }

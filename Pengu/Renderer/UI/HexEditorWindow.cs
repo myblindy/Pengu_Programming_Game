@@ -1,4 +1,5 @@
 ﻿using GLFW;
+using Pengu.Support;
 using Pengu.VirtualMachine;
 using System;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ namespace Pengu.Renderer.UI
     class HexEditorWindow<TMemory> : BaseWindow where TMemory : IMemory
     {
         readonly TMemory memory;
-        readonly VM vm;
+        readonly VM? vm;
 
         const int editorLineBytes = 0x15;
         const int addressSizeBytes = 2;
@@ -21,11 +22,11 @@ namespace Pengu.Renderer.UI
         bool done, running;
 
         public HexEditorWindow(VulkanContext context, VulkanContext.GameSurface surface, TMemory memory,
-            int? positionX = null, int? positionY = null, string title = null, int linesCount = 15)
+            int? positionX = null, int? positionY = null, string? title = null, int? linesCount = null)
             : base(context, surface, "HEX EDITOR" + (string.IsNullOrWhiteSpace(title) ? "" : $" - {title}"),
                   positionX: positionX ?? 8, positionY: positionY ?? 2, chromeBackground: FontColor.Black, chromeForeground: FontColor.BrightGreen)
         {
-            (this.memory, vm, this.linesCount) = (memory, memory as VM, linesCount);
+            (this.memory, vm, this.linesCount) = (memory, memory as VM, linesCount ?? 15);
 
             memory.RefreshRequired += _ => contentFontStringDirty = true;
             vm?.RegisterInterrupt(0, _ => { done = true; running = false; });
@@ -35,7 +36,7 @@ namespace Pengu.Renderer.UI
 
         protected override void FillContentFontString(bool first)
         {
-            static string TryGetHexAt(byte[] array, int index) => index < array.Length ? array[index].ToString("X2") : "..";
+            static string TryGetHexAt(IList<byte> array, int index) => index < array.Count ? array[index].ToString("X2") : "..";
 
             var frameForAddress = new string('═', addressSizeBytes * 2 + 2);
             var frameForHexDump = new string('═', editorLineBytes * 3 + 1);
@@ -52,14 +53,14 @@ namespace Pengu.Renderer.UI
             fontOverride.Add((leftAddress0, 4, chromeBackground, FontColor.BrightCyan, true));
             fontOverride.Add((value0, 1, chromeBackground, FontColor.BrightCyan, true));
 
-            string additionalText = null;
+            string? additionalText = null;
             var editorLineBytes31Lines = new string('─', editorLineBytes * 3 + 1);
             var addressSizeBytes22Lines = new string('─', addressSizeBytes * 2 + 2);
 
             if (!(vm is null))
             {
                 var ipLine = Math.DivRem(vm.InstructionPointer, editorLineBytes, out var ipIndexInLine);
-                var disasmNext = InstructionSet.Disassemble(memory.Memory.AsMemory(vm.InstructionPointer), out var instructionByteSize);
+                var disasmNext = InstructionSet.Disassemble(memory.Memory.AsMemory(vm.InstructionPointer), out var instructionByteSize) ?? "---";
 
                 var ip0 = (2 + ipLine) * frameLength + 3 + 5 + 3 * ipIndexInLine;
                 var ip0len = 3 * Math.Min(editorLineBytes - ipIndexInLine, instructionByteSize);
@@ -102,16 +103,16 @@ namespace Pengu.Renderer.UI
             {
                 InstructionSet.Disassemble(memory.Memory.AsMemory(selectedHalfByte / 2), out var size);
                 if (size == 0) size = 1;
-                selectedHalfByte = Math.Min(size * 2 + selectedHalfByte & 0xFFFE, memory.Memory.Length * 2 - 2);
+                selectedHalfByte = Math.Min(size * 2 + selectedHalfByte & 0xFFFE, memory.Memory.Count * 2 - 2);
                 contentFontStringDirty = true;
                 return true;
             }
 
             if (key == Keys.Left && action != InputState.Release && selectedHalfByte > 0) { --selectedHalfByte; contentFontStringDirty = true; return true; }
-            if (key == Keys.Right && action != InputState.Release && selectedHalfByte < memory.Memory.Length * 2 - 1) { ++selectedHalfByte; contentFontStringDirty = true; return true; }
+            if (key == Keys.Right && action != InputState.Release && selectedHalfByte < memory.Memory.Count * 2 - 1) { ++selectedHalfByte; contentFontStringDirty = true; return true; }
 
             if (key == Keys.Up && action != InputState.Release && selectedHalfByte >= editorLineBytes * 2) { selectedHalfByte -= editorLineBytes * 2; contentFontStringDirty = true; return true; }
-            if (key == Keys.Down && action != InputState.Release && selectedHalfByte < memory.Memory.Length * 2 - editorLineBytes * 2) { selectedHalfByte += editorLineBytes * 2; contentFontStringDirty = true; return true; }
+            if (key == Keys.Down && action != InputState.Release && selectedHalfByte < memory.Memory.Count * 2 - editorLineBytes * 2) { selectedHalfByte += editorLineBytes * 2; contentFontStringDirty = true; return true; }
 
             void UpdateHalfByteWithNumber(int n)
             {
@@ -120,7 +121,7 @@ namespace Pengu.Renderer.UI
                 else
                     memory.Memory[selectedHalfByte / 2] = (byte)(memory.Memory[selectedHalfByte / 2] & 0xF | (n << 4));
 
-                if (selectedHalfByte < memory.Memory.Length * 2 - 1)
+                if (selectedHalfByte < memory.Memory.Count * 2 - 1)
                     ++selectedHalfByte;
 
                 contentFontStringDirty = true;
@@ -132,7 +133,7 @@ namespace Pengu.Renderer.UI
 
             if (key == Keys.F11 && action != InputState.Release && !done && !running)
             {
-                vm.RunNextInstruction();
+                vm?.RunNextInstruction();
                 contentFontStringDirty = true;
             }
             if (key == Keys.F5 && !modifiers.HasFlag(ModifierKeys.Shift) && action == InputState.Press && !done && !running)
@@ -141,7 +142,7 @@ namespace Pengu.Renderer.UI
                 running = false;
             if (key == Keys.R && action == InputState.Press && !running)
             {
-                vm.Reset();
+                vm?.Reset();
                 done = false;
                 contentFontStringDirty = true;
             }
@@ -160,7 +161,7 @@ namespace Pengu.Renderer.UI
             var cycles = (int)(totalTime.TotalMilliseconds / InstructionRunFrequencyMSec);
             if (cycles > 0)
             {
-                vm.RunNextInstruction(cycles);
+                vm?.RunNextInstruction(cycles);
                 contentFontStringDirty = true;
                 partialElapsedTime = TimeSpan.FromTicks((long)(
                     totalTime.TotalMilliseconds - cycles * InstructionRunFrequencyMSec * TimeSpan.TicksPerMillisecond));

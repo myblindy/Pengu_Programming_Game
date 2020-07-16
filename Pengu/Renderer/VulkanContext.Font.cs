@@ -550,13 +550,13 @@ namespace Pengu.Renderer
             public int Height { get; private set; }
 
             Vector2 position;
-            public Vector2 Position { get => position; set { position = value; font.IsBufferDataDirty = true; font.IsCommandBufferDirty = true; } }
+            public Vector2 Position { get => position; set { position = value; font.IsBufferDataDirty = font.IsCommandBufferDirty = true; } }
 
             float size;
 
             public event Action? Changed;
 
-            public float Size { get => size; set { size = value; font.IsBufferDataDirty = true; font.IsCommandBufferDirty = true; } }
+            public float Size { get => size; set { size = value; font.IsBufferDataDirty = font.IsCommandBufferDirty = true; } }
         }
 
         struct FontUniformObject

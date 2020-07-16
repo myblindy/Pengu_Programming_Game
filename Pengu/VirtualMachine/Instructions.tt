@@ -123,6 +123,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
+using Pengu.Support;
 
 namespace Pengu.VirtualMachine
 {

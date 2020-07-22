@@ -1,0 +1,150 @@
+{
+  "$schema": "../schema.json",
+  "name": "Test Exercise",
+  "cpus": [
+    {
+      "name": "CPU0",
+      "registerCount": 1,
+      "memory": {
+        "name": "CPU0",
+        "size": 50
+      },
+      "interrupts": [
+        {
+          "irq": 1,
+          "type": "read_memory",
+          "inputRegister": "r0",
+          "outputRegister": "r0",
+          "memoryName": "MEM0"
+        },
+        {
+          "irq": 45,
+          "type": "write_memory_literal",
+          "inputRegister": "r0",
+          "outputLiteral": 0,
+          "memoryName": "sevenSegmentDigitDisplayLeft"
+        },
+        {
+          "irq": 46,
+          "type": "write_memory_literal",
+          "inputRegister": "r0",
+          "outputLiteral": 0,
+          "memoryName": "sevenSegmentDigitDisplayRight"
+        }
+      ]
+    }
+  ],
+  "memories": [
+    {
+      "name": "MEM0",
+      "data": "0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x67",
+      "readOnly": true
+    }
+  ],
+  "sevenSegmentDigitDisplays": [
+    {
+      "name": "sevenSegmentDigitDisplayLeft"
+    },
+    {
+      "name": "sevenSegmentDigitDisplayRight"
+    }
+  ],
+  "labels": [
+    {
+      "name": "sevenSegmentDigitDisplayLeftLabel",
+      "text": "LEFT:"
+    },
+    {
+      "name": "sevenSegmentDigitDisplayRightLabel",
+      "text": "RIGHT:"
+    }
+  ],
+  "windows": [
+    {
+      "type": "hex_editor",
+      "memoryName": "CPU0",
+      "positionX": 2,
+      "positionY": 2,
+      "backColor": "Black",
+      "foreColor": "BrightGreen",
+      "linesCount": 9
+    },
+    {
+      "type": "hex_editor",
+      "memoryName": "MEM0",
+      "positionX": 2,
+      "positionY": 18,
+      "backColor": "Black",
+      "foreColor": "BrightGreen",
+      "linesCount": 1
+    },
+    {
+      "type": "assembler",
+      "memoryName": "CPU0",
+      "positionX": 40,
+      "positionY": 2,
+      "backColor": "Black",
+      "foreColor": "BrightGreen",
+      "linesCount": 30,
+      "loadFile": "program.pasm"
+    },
+    {
+      "type": "playground",
+      "positionX": 2,
+      "positionY": 20,
+      "width": 20,
+      "height": 8,
+      "backColor": "BrightBlack",
+      "foreColor": "White",
+      "displayComponents": [
+        {
+          "name": "sevenSegmentDigitDisplayLeftLabel",
+          "positionX": 1,
+          "positionY": 1
+        },
+        {
+          "name": "sevenSegmentDigitDisplayLeft",
+          "positionX": 1,
+          "positionY": 2
+        },
+        {
+          "name": "sevenSegmentDigitDisplayRightLabel",
+          "positionX": 8,
+          "positionY": 1
+        },
+        {
+          "name": "sevenSegmentDigitDisplayRight",
+          "positionX": 8,
+          "positionY": 2
+        }
+      ]
+    }
+  ],
+  "solutions": [
+    {
+      "inputs": [
+        {
+          "memoryName": "CPU0",
+          "memoryIndex": 0,
+          "data": "0x55"
+        }
+      ],
+      "expectations": [
+        {
+          "expectationGroup": [
+            {
+              "memoryName": "sevenSegmentDigitDisplayLeft",
+              "memoryIndex": 0,
+              "data": "0x7F"
+            },
+            {
+              "memoryName": "sevenSegmentDigitDisplayRight",
+              "memoryIndex": 0,
+              "data": "0x6D"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,32 +1,68 @@
-﻿using Pengu.VirtualMachine;
+﻿using MoreLinq;
+using Pengu.VirtualMachine;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 
 namespace Pengu.Renderer.UI
 {
     class PlaygroundWindow : BaseWindow
     {
-        private readonly Digit[] Digits = Enumerable.Range(0, 2).Select(_ => new Digit()).ToArray();
+        private readonly (SevenSegmentDigitDisplayComponent ssdd, SevenSegmnetDigitRepresentation ssd, int posX, int posY)[] SevenSegmentDigitDisplayComponents;
+        private readonly (string text, int posX, int posY)[] Labels;
 
-        public PlaygroundWindow(VulkanContext context, VulkanContext.GameSurface surface, VM vm) :
-            base(context, surface, "PLAY", positionX: 1, positionY: 25, chromeBackground: FontColor.BrightBlack)
-        {
-            vm.RegisterInterrupt(0x45, vm => SetDigit(vm.Registers[0]));
-        }
+        readonly StringBuilder contentStringBuilder;
+        readonly int width, height;
 
-        private void SetDigit(int val)
+        public override int Width => width;
+        public override int Height => height;
+
+        public PlaygroundWindow(VulkanContext context, VulkanContext.GameSurface surface, int positionX, int positionY, int width, int height,
+            IEnumerable<(object data, int posX, int posY)>? components) :
+            base(context, surface, "PLAY", positionX: positionX, positionY: positionY, chromeBackground: FontColor.BrightBlack)
         {
-            Digits[val >> 7].Value = val;
-            contentFontStringDirty = true;
+            (this.width, this.height) = (width, height);
+
+            // build the string builder backing the display
+            contentStringBuilder = new StringBuilder((width + 1) * height - 1);
+            var emptyLine = new string(' ', width);
+            for (int line = 0; line < height; ++line)
+            {
+                contentStringBuilder.Append(emptyLine);
+                if (line < height - 1)
+                    contentStringBuilder.Append('\n');
+            }
+
+            // decode the components
+            SevenSegmentDigitDisplayComponents = components?.Select(w => (ssdd: w.data as SevenSegmentDigitDisplayComponent, w.posX, w.posY)).Where(w => !(w.ssdd is null))
+                    .Select(w => (w.ssdd!, new SevenSegmnetDigitRepresentation(), w.posX, w.posY)).ToArray()
+                ?? Array.Empty<(SevenSegmentDigitDisplayComponent ssdd, SevenSegmnetDigitRepresentation ssd, int posX, int posY)>();
+            SevenSegmentDigitDisplayComponents.ForEach(c => c.ssdd.RefreshRequired += _ =>
+            {
+                if (c.ssdd.Memory[0] != c.ssd.Value)
+                {
+                    c.ssd.Value = c.ssdd.Memory[0];
+                    contentFontStringDirty = true;
+                }
+            });
+
+#pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
+            Labels = components?.Select(w => (text: w.data as string, w.posX, w.posY)).Where(w => !(w.text is null)).ToArray()
+                ?? Array.Empty<(string, int, int)>();
+#pragma warning restore CS8619 // Nullability of reference types in value doesn't match target type.
         }
 
         public override void UpdateLogic(TimeSpan elapsedTime)
         {
         }
 
-        class Digit
+        class SevenSegmnetDigitRepresentation
         {
+            public const int Width = 4;
+            public const int Height = 5;
+
             int value;
             public int Value
             {
@@ -49,18 +85,25 @@ namespace Pengu.Renderer.UI
                 }
             }
 
-            readonly string[] Lines = Enumerable.Range(0, 5).Select(idx => "    ").ToArray();
+            readonly string[] Lines = Enumerable.Range(0, Height).Select(idx => "    ").ToArray();
             public string this[int idx] => Lines[idx];
         }
 
         protected override void FillContentFontString(bool first)
         {
-            ContentFontString.Set(
-                $" {Digits[0][0]} {Digits[1][0]} \n" +
-                $" {Digits[0][1]} {Digits[1][1]} \n" +
-                $" {Digits[0][2]} {Digits[1][2]} \n" +
-                $" {Digits[0][3]} {Digits[1][3]} \n" +
-                $" {Digits[0][4]} {Digits[1][4]} ");
+            // update the builder backing the display
+            foreach (var (_, ssd, posX, posY) in SevenSegmentDigitDisplayComponents)
+                for (int lineIdx = 0; lineIdx < SevenSegmnetDigitRepresentation.Height; ++lineIdx)
+                    for (int charIdx = 0; charIdx < SevenSegmnetDigitRepresentation.Width; ++charIdx)
+                        contentStringBuilder[(posY + lineIdx) * (Width + 1) + posX + charIdx] = ssd[lineIdx][charIdx];
+
+            // since labels are static, only copy them once
+            if (first) 
+                foreach (var (text, posX, posY) in Labels)
+                    for (int charIdx = 0; charIdx < text.Length; ++charIdx)
+                        contentStringBuilder[posY * (Width + 1) + posX + charIdx] = text[charIdx];
+
+            ContentFontString.Set(contentStringBuilder.ToString());
 
             if (first)
                 ContentFontString.Set(null, chromeBackground, chromeForeground, surface.CharacterToScreenSize(positionX, positionY, ChromeFontString));

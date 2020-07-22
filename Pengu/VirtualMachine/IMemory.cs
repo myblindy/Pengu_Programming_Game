@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Pengu.VirtualMachine
 {
@@ -7,6 +8,7 @@ namespace Pengu.VirtualMachine
         public event Action<IMemory> RefreshRequired;
         public void FireRefreshRequired();
         
-        public byte[] Memory { get; }
+        public IList<byte> Memory { get; }
+        public string MemoryName { get; }
     }
 }

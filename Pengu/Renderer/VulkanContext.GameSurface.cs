@@ -7,6 +7,7 @@ using GLFW;
 using Pengu.VirtualMachine;
 using SharpVk;
 using Pengu.Renderer.UI;
+using Pengu.Support;
 
 namespace Pengu.Renderer
 {
@@ -16,8 +17,8 @@ namespace Pengu.Renderer
         {
             readonly List<BaseWindow> Windows = new List<BaseWindow>();
 
-            BaseWindow focusedWindow;
-            internal BaseWindow FocusedWindow
+            BaseWindow? focusedWindow;
+            internal BaseWindow? FocusedWindow
             {
                 get => focusedWindow;
                 set
@@ -32,9 +33,9 @@ namespace Pengu.Renderer
                 }
             }
 
-            private void MoveWindowToTop(BaseWindow window)
+            private void MoveWindowToTop(BaseWindow? window)
             {
-                if (Windows[0] != window)
+                if (!(window is null) && Windows[0] != window)
                 {
                     context.monospaceFont.MoveStringToTop(window.ChromeFontString);
                     context.monospaceFont.MoveStringToTop(window.ContentFontString);
@@ -45,6 +46,10 @@ namespace Pengu.Renderer
 
             readonly VulkanContext context;
             readonly Vector2 characterSize;
+            internal List<Solution>? Solutions;
+            internal readonly List<IMemory> memories = new List<IMemory>();
+
+            internal IMemory FindMemory(string name) => memories!.First(mem => mem.MemoryName == name);
 
             public GameSurface(VulkanContext context)
             {
@@ -52,6 +57,67 @@ namespace Pengu.Renderer
 
                 var (u0, v0, u1, v1) = context.monospaceFont[' '];
                 characterSize = new Vector2(u1 - u0, v1 - v0);
+
+                LoadExercise("Test Exercise");
+            }
+
+            private void LoadExercise(string testName)
+            {
+                var exercise = Exercises.Get(testName);
+                Solutions = exercise.Solutions;
+
+                memories.Clear();
+                var labels = new Dictionary<string, string>();
+
+                object FindAny(string name) =>
+                    labels!.TryGetValue(name, out var stringValue) ? (object)stringValue : FindMemory(name);
+
+                if (!(exercise.Labels is null))
+                    foreach (var label in exercise.Labels)
+                        labels.Add(label.Name!, label.Text!);
+                if (!(exercise.Memories is null))
+                    memories.AddRange(exercise.Memories.Select(mem => (IMemory)new MemoryComponent(mem.Name!, mem.Size, mem.Data)));
+                if (!(exercise.SevenSegmentDigitDisplays is null))
+                    memories.AddRange(exercise.SevenSegmentDigitDisplays.Select(sdd => new SevenSegmentDigitDisplayComponent(sdd.Name!)));
+                memories.AddRange(exercise.CPUs!
+                    .Select(cpu =>
+                    {
+                        var vm = new VM(VMType.BitLength8, cpu.RegisterCount, cpu.Memory!.Name!, cpu.Memory!.Size, cpu.Memory!.Data);
+                        if (!(cpu.Interrupts is null))
+                            foreach (var interrupt in cpu.Interrupts)
+                            {
+                                var mem = FindMemory(interrupt.MemoryName!);
+
+                                Action<VM> action = interrupt.Type switch
+                                {
+                                    InterruptType.ReadMemory => vm =>
+                                        vm.Registers[interrupt.OutputRegisterNumber!.Value] = mem.Memory[vm.Registers[interrupt.InputRegisterNumber!.Value]],
+                                    InterruptType.WriteMemoryLiteral => vm =>
+                                        mem.Memory[interrupt.OutputLiteral!.Value] = (byte)vm.Registers[interrupt.InputRegisterNumber!.Value],
+                                    _ => throw new NotImplementedException(),
+                                };
+                                vm.RegisterInterrupt(interrupt.Irq, action);
+                            }
+                        return vm;
+                    }));
+
+                foreach (var window in exercise.Windows!)
+                    switch (window.Type)
+                    {
+                        case WindowType.HexEditor:
+                            AddHexEditorWindow(FindMemory(window.MemoryName!), window.PositionX, window.PositionY, window.MemoryName, window.LinesCount);
+                            break;
+                        case WindowType.Assembler:
+                            AddNewWindow(new AssemblerWindow(context, this, string.IsNullOrWhiteSpace(window.LoadFile) ? null : exercise.ReadAllAssociatedFile(window.LoadFile),
+                                (VM)FindMemory(window.MemoryName!)));
+                            break;
+                        case WindowType.Playground:
+                            AddNewWindow(new PlaygroundWindow(context, this, window.PositionX!.Value, window.PositionY!.Value, window.Width!.Value, window.Height!.Value,
+                                window.DisplayComponents?.Select(c => (FindAny(c.Name!), c.PositionX, c.PositionY))));
+                            break;
+                        default:
+                            throw new NotImplementedException();
+                    }
             }
 
             public void UpdateLogic(TimeSpan elapsedTime) => Windows.ForEach(w => w.UpdateLogic(elapsedTime));
@@ -114,17 +180,13 @@ namespace Pengu.Renderer
                 FocusedWindow = window;
             }
 
-            internal void AddHexEditorWindow(IMemory mem, int? positionX = null, int? positionY = null, string title = null, int linesCount = 15)
+            internal void AddHexEditorWindow(IMemory mem, int? positionX = null, int? positionY = null, string? title = null, int? linesCount = null)
             {
                 if (mem is VM vm)
                     AddNewWindow(new HexEditorWindow<VM>(context, this, vm, positionX, positionY, title, linesCount));
                 else
                     AddNewWindow(new HexEditorWindow<MemoryComponent>(context, this, (MemoryComponent)mem, positionX, positionY, title, linesCount));
             }
-
-            internal void AddPlaygroundWindow(VM vm) => AddNewWindow(new PlaygroundWindow(context, this, vm));
-
-            internal void AddAssemblerWindow(string asm, VM vm) => AddNewWindow(new AssemblerWindow(context, this, asm, vm));
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using GLFW;
 using MoreLinq;
+using Pengu.Support;
 using Pengu.VirtualMachine;
 using System;
 using System.Collections.Generic;
@@ -24,11 +25,12 @@ namespace Pengu.Renderer.UI
         bool syntaxHighlightDirty = true;
         int verticalOffset, lineIndex, lineCharacterIndex;
 
-        public AssemblerWindow(VulkanContext context, VulkanContext.GameSurface surface, string asm, VM vm) :
+        public AssemblerWindow(VulkanContext context, VulkanContext.GameSurface surface, string? asm, VM vm) :
             base(context, surface, "ASSEMBLER", positionX: 90, positionY: 2, chromeBackground: FontColor.Black, chromeForeground: FontColor.BrightGreen)
         {
             this.vm = vm;
-            lines.AddRange(asm.Split('\n'));
+            if (!string.IsNullOrWhiteSpace(asm))
+                lines.AddRange(asm.Split('\n'));
         }
 
         void UpdateSyntaxHighlight()
@@ -201,7 +203,7 @@ namespace Pengu.Renderer.UI
             if (key == Keys.F6 && action == InputState.Press)
             {
                 var asm = string.Join('\n', lines);
-                Array.Clear(vm.Memory, 0, vm.Memory.Length);
+                vm.Memory.SetAll((byte)0);
                 InstructionSet.Assemble(vm, asm);
                 vm.FireRefreshRequired();
                 return true;

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
+using Pengu.Support;
 
 namespace Pengu.VirtualMachine
 {
@@ -508,8 +509,8 @@ namespace Pengu.VirtualMachine
 					},
 							};
 
-		static readonly Func<Memory<byte>, (string result, int size)>[] InstructionDecompilation = 
-			new Func<Memory<byte>, (string result, int size)>[]
+		static readonly Func<Memory<byte>, (string? result, int size)>[] InstructionDecompilation = 
+			new Func<Memory<byte>, (string? result, int size)>[]
 			{
 									m =>
 					{
@@ -1038,7 +1039,7 @@ namespace Pengu.VirtualMachine
 					},
 							};
 
-		public static string Disassemble(Memory<byte> m, out int size)
+		public static string? Disassemble(Memory<byte> m, out int size)
 		{
 			if (m.Length > 0)
 			{
@@ -1063,7 +1064,7 @@ namespace Pengu.VirtualMachine
 			var labels = new Dictionary<string, ushort>();
 
             var reader = new StringReader(s);
-            string line;
+            string? line;
 			int lineidx = 0;
             var tokens = new List<string>();
             while ((line = reader.ReadLine()) != null)

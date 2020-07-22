@@ -18,6 +18,7 @@ using Buffer = SharpVk.Buffer;
 using Version = SharpVk.Version;
 using Constants = SharpVk.Constants;
 using Exception = System.Exception;
+using Pengu.Support;
 
 namespace Pengu.Renderer
 {
@@ -25,7 +26,7 @@ namespace Pengu.Renderer
     {
         readonly NativeWindow window;
         readonly Instance instance;
-        readonly DebugReportCallback debugReportCallback;
+        readonly DebugReportCallback? debugReportCallback;
 
         internal Extent2D extent;
         Surface surface;
@@ -84,7 +85,7 @@ namespace Pengu.Renderer
         readonly Queue<IInputAction> InputActionQueue = new Queue<IInputAction>();
 
         // needed for Glfw's events
-        static VulkanContext ContextInstance;
+        static VulkanContext? ContextInstance;
 
         private struct QueueFamilyIndices
         {
@@ -146,32 +147,31 @@ namespace Pengu.Renderer
             window = new NativeWindow(Width, Height, "Pengu");
             Glfw.SetInputMode(window, InputMode.LockKeyMods, 1);
 
-            static void KeyActionCallback(object sender, KeyEventArgs args) => ContextInstance.InputActionQueue.Enqueue(
+            static void KeyActionCallback(object? sender, KeyEventArgs args) => ContextInstance?.InputActionQueue.Enqueue(
                 new KeyAction { Key = args.Key, ScanCode = args.ScanCode, Action = args.State, Modifiers = args.Modifiers });
             window.KeyAction += KeyActionCallback;
 
-            static void CharacterInputCallback(object sender, CharEventArgs args) => ContextInstance.InputActionQueue.Enqueue(
+            static void CharacterInputCallback(object? sender, CharEventArgs args) => ContextInstance?.InputActionQueue.Enqueue(
                 new CharacterAction { Character = args.Char, Modifiers = args.ModifierKeys });
             window.CharacterInput += CharacterInputCallback;
 
-            static void MouseMovedCallback(object sender, MouseMoveEventArgs args) => ContextInstance.InputActionQueue.Enqueue(
+            static void MouseMovedCallback(object? sender, MouseMoveEventArgs args) => ContextInstance?.InputActionQueue.Enqueue(
                 new MouseMoveAction { X = args.X / ContextInstance.extent.Width, Y = args.Y / ContextInstance.extent.Height });
             window.MouseMoved += MouseMovedCallback;
 
-            static void MouseButtonCallback(object sender, MouseButtonEventArgs args) => ContextInstance.InputActionQueue.Enqueue(
+            static void MouseButtonCallback(object? sender, MouseButtonEventArgs args) => ContextInstance?.InputActionQueue.Enqueue(
                 new MouseButtonAction { Action = args.Action, Button = args.Button, Modifiers = args.Modifiers });
             window.MouseButton += MouseButtonCallback;
 
             const string StandardValidationLayerName = "VK_LAYER_LUNARG_standard_validation";
 
             // create instance
-            string[] enabledLayers = null;
-            string[] enabledExtensions = null;
+            string[] enabledLayers;
+            string[] enabledExtensions;
             if (debug)
             {
                 var availableLayers = Instance.EnumerateLayerProperties();
-                if (availableLayers.Any(w => w.LayerName == StandardValidationLayerName))
-                    enabledLayers = new[] { StandardValidationLayerName };
+                enabledLayers = availableLayers.Any(w => w.LayerName == StandardValidationLayerName) ? new[] { StandardValidationLayerName } : Array.Empty<string>();
                 enabledExtensions = Vulkan.GetRequiredInstanceExtensions().Append(ExtExtensions.DebugReport).ToArray();
             }
             else
@@ -216,11 +216,11 @@ namespace Pengu.Renderer
                 null, KhrExtensions.Swapchain);
 
             // get the queue and create the pool
-            graphicsQueue = device.GetQueue(queueIndices.GraphicsFamily.Value, 0);
-            graphicsCommandPool = device.CreateCommandPool(queueIndices.GraphicsFamily.Value);
+            graphicsQueue = device.GetQueue(queueIndices.GraphicsFamily!.Value, 0);
+            graphicsCommandPool = device.CreateCommandPool(queueIndices.GraphicsFamily!.Value);
             presentQueue = device.GetQueue(queueIndices.GraphicsFamily.Value, 0);
-            presentCommandPool = device.CreateCommandPool(queueIndices.PresentFamily.Value);
-            transferQueue = device.GetQueue(queueIndices.TransferFamily.Value, 0);
+            presentCommandPool = device.CreateCommandPool(queueIndices.PresentFamily!.Value);
+            transferQueue = device.GetQueue(queueIndices.TransferFamily!.Value, 0);
             transientTransferCommandPool = device.CreateCommandPool(queueIndices.TransferFamily.Value, CommandPoolCreateFlags.Transient);
 
             var surfaceCapabilities = physicalDevice.GetSurfaceCapabilities(surface);
@@ -315,51 +315,12 @@ namespace Pengu.Renderer
             fontStringFps = monospaceFont.AllocateString(new Vector2(-1f * extent.AspectRatio, -.995f), .033f);
 
             gameSurface = new GameSurface(this);
-            var vm = new VM(VMType.BitLength8, registers: 1, memory: 60);
-            var mem = new MemoryComponent(15);
-
-            var init = new byte[] { 0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x67 };
-            Array.Copy(init, mem.Memory, init.Length);
-
-            vm.RegisterInterrupt(1, vm => vm.Registers[0] = mem.Memory[vm.Registers[0]]);
-
-            gameSurface.AddHexEditorWindow(mem, title: "MEM", linesCount: 2);
-            gameSurface.AddHexEditorWindow(vm, positionY: 8, title: "CPU", linesCount: 5);
-            gameSurface.AddPlaygroundWindow(vm);
-            gameSurface.AddAssemblerWindow(@"
-; temporary storage for 
-; the current counter
-.tmp db 0
-
-org
-mov r0 0
-
-.loop
-addi r0 1
-modi r0 100
-mov [.tmp] r0 
-
-; first digit
-divi r0 10
-int 1
-int 0x45
-
-; second digit
-mov r0 [.tmp]
-modi r0 10
-int 1
-addi r0 0b10000000
-int 0x45
-
-; restore and loop
-mov r0 [.tmp]
-jmp .loop".Replace("\r\n", "\n"), vm);
         }
 
         ShaderModule CreateShaderModule(string filePath)
         {
             var fileBytes = File.ReadAllBytes(Path.Combine("Shaders", filePath));
-            var shaderData = new uint[(int)Math.Ceiling(fileBytes.Length / 4f)];
+            var shaderData = new uint[fileBytes.Length.CeilingIntegerDivide(4)];
 
             System.Buffer.BlockCopy(fileBytes, 0, shaderData, 0, fileBytes.Length);
 
@@ -475,8 +436,8 @@ jmp .loop".Replace("\r\n", "\n"), vm);
 
         Image CreateTextureImage(string fn, out Format format, out DeviceMemory imageMemory)
         {
-            Buffer stagingBuffer = default;
-            DeviceMemory stagingBufferMemory = default;
+            Buffer? stagingBuffer = default;
+            DeviceMemory? stagingBufferMemory = default;
 
             // upload to a staging buffer in host memory
             try
@@ -674,7 +635,7 @@ jmp .loop".Replace("\r\n", "\n"), vm);
                 presentCommandPool.Dispose();
                 device.Dispose();
                 surface.Dispose();
-                debugReportCallback.Dispose();
+                debugReportCallback?.Dispose();
                 instance.Dispose();
                 window.Dispose();
 

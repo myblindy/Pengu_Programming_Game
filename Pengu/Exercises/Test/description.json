@@ -86,7 +86,7 @@
       "backColor": "Black",
       "foreColor": "BrightGreen",
       "linesCount": 30,
-      "loadFile": "program.pasm"
+      "loadFile": "program.pengu-asm"
     },
     {
       "type": "playground",

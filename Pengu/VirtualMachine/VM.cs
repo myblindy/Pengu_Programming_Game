@@ -62,7 +62,7 @@ namespace Pengu.VirtualMachine
             }
         }
 
-        public ushort RunNextInstruction(int cycles = 1)
+        public ushort RunNextInstruction(int cycles = 1, Func<bool>? instructionFeedbackAction = null)
         {
             while (cycles-- > 0 && InstructionPointer < Memory.Count - 1)
             {
@@ -71,6 +71,8 @@ namespace Pengu.VirtualMachine
                 if (InstructionSet.InstructionDefinitions.Length > instruction)
                     nextIp = InstructionSet.InstructionDefinitions[instruction](this, (ushort)(InstructionPointer + 1));
                 if (nextIp < 0) break; else InstructionPointer = nextIp;
+
+                if (instructionFeedbackAction?.Invoke() ?? false) break;
             }
 
             return 1;

@@ -46,6 +46,10 @@ namespace Pengu.Renderer
 
             readonly VulkanContext context;
             readonly Vector2 characterSize;
+            internal List<Solution>? Solutions;
+            internal readonly List<IMemory> memories = new List<IMemory>();
+
+            internal IMemory FindMemory(string name) => memories!.First(mem => mem.MemoryName == name);
 
             public GameSurface(VulkanContext context)
             {
@@ -60,12 +64,11 @@ namespace Pengu.Renderer
             private void LoadExercise(string testName)
             {
                 var exercise = Exercises.Get(testName);
+                Solutions = exercise.Solutions;
 
-                var memories = new List<IMemory>();
+                memories.Clear();
                 var labels = new Dictionary<string, string>();
-                
-                IMemory FindMemory(string name) =>
-                    memories!.First(mem => mem.MemoryName == name);
+
                 object FindAny(string name) =>
                     labels!.TryGetValue(name, out var stringValue) ? (object)stringValue : FindMemory(name);
 

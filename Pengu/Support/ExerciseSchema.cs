@@ -175,7 +175,7 @@ namespace Pengu.Support
         public List<CPU>? CPUs { get; set; }
         public List<Memory>? Memories { get; set; }
         public List<SevenSegmentDigitDisplay>? SevenSegmentDigitDisplays { get; set; }
-        public List<Label> Labels { get; set; }
+        public List<Label>? Labels { get; set; }
         public List<Window>? Windows { get; set; }
         public List<Solution>? Solutions { get; set; }
 

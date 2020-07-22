@@ -19,7 +19,7 @@ namespace Pengu.Renderer.UI
 
         int selectedHalfByte;
 
-        bool done, running;
+        bool done, running, solved;
 
         public HexEditorWindow(VulkanContext context, VulkanContext.GameSurface surface, TMemory memory,
             int? positionX = null, int? positionY = null, string? title = null, int? linesCount = null)
@@ -70,8 +70,9 @@ namespace Pengu.Renderer.UI
                 fontOverride.Add((ip0, ip0len, done ? FontColor.DarkGreen : FontColor.DarkRed, done ? chromeBackground : FontColor.White, false));
                 fontOverride.Add((ip1, ip1len, done ? FontColor.DarkGreen : FontColor.DarkRed, done ? chromeBackground : FontColor.White, false));
 
-                var regFlags = string.Concat(vm.Registers.Select((val, idx) => $"R{idx}: 0x{val:X2} ")) +
-                $"SR: 0x{vm.StackRegister:X2} IP: 0x{vm.InstructionPointer:X2} F: {(vm.FlagCompare < 0 ? "-" : vm.FlagCompare == 0 ? "0" : "+")} ";
+                var regFlags = (solved ? "(SOLVED) " : "         ") +
+                    string.Concat(vm.Registers.Select((val, idx) => $"R{idx}: 0x{val:X2} ")) +
+                    $"SR: 0x{vm.StackRegister:X2} IP: 0x{vm.InstructionPointer:X2} F: {(vm.FlagCompare < 0 ? "-" : vm.FlagCompare == 0 ? "0" : "+")} ";
                 var statusLine = " NEXT ASM: " + disasmNext.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7 - regFlags.Length) + regFlags;
 
                 var disasmSelected = InstructionSet.Disassemble(memory.Memory.AsMemory(selectedHalfByte / 2), out _) ?? "---";
@@ -136,10 +137,46 @@ namespace Pengu.Renderer.UI
                 vm?.RunNextInstruction();
                 contentFontStringDirty = true;
             }
-            if (key == Keys.F5 && !modifiers.HasFlag(ModifierKeys.Shift) && action == InputState.Press && !done && !running)
+            if (key == Keys.F5 && !modifiers.HasFlag(ModifierKeys.Shift) && !modifiers.HasFlag(ModifierKeys.Control) && action == InputState.Press && !done && !running)
                 running = true;
-            if (key == Keys.F5 && modifiers.HasFlag(ModifierKeys.Shift) && action == InputState.Press && !done && running)
+            if (key == Keys.F5 && modifiers.HasFlag(ModifierKeys.Shift) && !modifiers.HasFlag(ModifierKeys.Control) && action == InputState.Press && !done && running)
                 running = false;
+            if (key == Keys.F5 && !modifiers.HasFlag(ModifierKeys.Shift) && modifiers.HasFlag(ModifierKeys.Control) && action == InputState.Press && !done && !running && !(vm is null))
+            {
+                var anyProblems = false;
+                solved = false;
+
+                if (!(surface.Solutions is null))
+                    foreach (var solution in surface.Solutions)
+                    {
+                        foreach (var input in solution.Inputs!)
+                        {
+                            var mem = surface.FindMemory(input.MemoryName!);
+                            for (int idx = 0; idx < input.Data!.Length; ++idx)
+                                mem.Memory[input.MemoryIndex + idx] = input.Data[idx];
+                        }
+
+                        vm.Reset();
+
+                        vm.RunNextInstruction(100000, () =>
+                        {
+                            anyProblems = false;
+                            foreach (var expectation in solution.Expectations!)
+                                foreach (var expectationItem in expectation.ExpectationGroup!)
+                                    if (!surface.FindMemory(expectationItem.MemoryName!).Memory.Skip(expectationItem.MemoryIndex).SequenceEqual(expectationItem.Data!))
+                                    {
+                                        anyProblems = true;
+                                        break;
+                                    }
+
+                            return !anyProblems;
+                        });
+                    }
+
+                contentFontStringDirty = true;
+                solved = !anyProblems;
+            }
+
             if (key == Keys.R && action == InputState.Press && !running)
             {
                 vm?.Reset();
@@ -163,8 +200,7 @@ namespace Pengu.Renderer.UI
             {
                 vm?.RunNextInstruction(cycles);
                 contentFontStringDirty = true;
-                partialElapsedTime = TimeSpan.FromTicks((long)(
-                    totalTime.TotalMilliseconds - cycles * InstructionRunFrequencyMSec * TimeSpan.TicksPerMillisecond));
+                partialElapsedTime = TimeSpan.FromTicks((long)(totalTime.TotalMilliseconds - cycles * InstructionRunFrequencyMSec * TimeSpan.TicksPerMillisecond));
             }
             else
                 partialElapsedTime += elapsedTime;

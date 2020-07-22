@@ -19,8 +19,7 @@ int 45
 mov r0 [.tmp]
 modi r0 10
 int 1
-addi r0 0b10000000
-int 45
+int 46
 
 ; restore and loop
 mov r0 [.tmp]

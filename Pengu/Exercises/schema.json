@@ -47,6 +47,14 @@
           "type": "integer",
           "minimum": 0
         },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
         "backColor": {
           "$ref": "#/definitions/fontColor"
         },
@@ -59,6 +67,25 @@
         },
         "loadFile": {
           "type": "string"
+        },
+        "displayComponents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "positionX": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "positionY": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
         }
       }
     },
@@ -180,7 +207,7 @@
         }
       ]
     },
-    "sevenDigitDisplay": {
+    "sevenSegmentDigitDisplay": {
       "type": "object",
       "description": "This describes a 7-digit display in this exercise. This is also a 1 byte memory component.",
       "required": [
@@ -190,6 +217,17 @@
         "name": {
           "type": "string",
           "description": "The name of the 7-digit display."
+        }
+      }
+    },
+    "label": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
         }
       }
     },
@@ -262,11 +300,17 @@
         "$ref": "#/definitions/memory"
       }
     },
-    "sevenDigitDisplays": {
+    "sevenSegmentDigitDisplays": {
       "type": "array",
       "description": "The list of seven digit displays in this exercise.",
       "items": {
-        "$ref": "#/definitions/sevenDigitDisplay"
+        "$ref": "#/definitions/sevenSegmentDigitDisplay"
+      }
+    },
+    "labels": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/label"
       }
     },
     "solutions": {

@@ -4,14 +4,14 @@ using System.Collections.Generic;
 
 namespace Pengu.VirtualMachine
 {
-    class SevenDigitDisplayComponent : IMemory
+    class SevenSegmentDigitDisplayComponent : IMemory
     {
-        class MemoryByteWithRefresh : IList<byte>
+        class MemoryByteWithRefreshFeedback : IList<byte>
         {
-            readonly SevenDigitDisplayComponent component;
+            readonly SevenSegmentDigitDisplayComponent component;
             byte value;
 
-            public MemoryByteWithRefresh(SevenDigitDisplayComponent component) => this.component = component;
+            public MemoryByteWithRefreshFeedback(SevenSegmentDigitDisplayComponent component) => this.component = component;
 
             public byte this[int index] { get => value; set { this.value = value; component.FireRefreshRequired(); } }
 
@@ -50,6 +50,6 @@ namespace Pengu.VirtualMachine
         public event Action<IMemory>? RefreshRequired;
         public void FireRefreshRequired() => RefreshRequired?.Invoke(this);
 
-        public SevenDigitDisplayComponent(string name) => (Memory, MemoryName) = (new MemoryByteWithRefresh(this), name);
+        public SevenSegmentDigitDisplayComponent(string name) => (Memory, MemoryName) = (new MemoryByteWithRefreshFeedback(this), name);
     }
 }

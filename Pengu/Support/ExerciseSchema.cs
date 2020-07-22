@@ -90,7 +90,7 @@ namespace Pengu.Support
         public string? MemoryName { get; set; }
     }
 
-    class SevenDigitDisplay
+    class SevenSegmentDigitDisplay
     {
         public string? Name { get; set; }
     }
@@ -112,16 +112,26 @@ namespace Pengu.Support
         Playground
     }
 
+    class DisplayComponent
+    {
+        public string? Name { get; set; }
+        public int PositionX { get; set; }
+        public int PositionY { get; set; }
+    }
+
     class Window
     {
         public WindowType Type { get; set; }
         public string? MemoryName { get; set; }
         public int? PositionX { get; set; }
         public int? PositionY { get; set; }
+        public int? Width { get; set; }
+        public int? Height { get; set; }
+        public int? LinesCount { get; set; }
         public FontColor BackColor { get; set; }
         public FontColor ForeColor { get; set; }
-        public int? LinesCount { get; set; }
         public string? LoadFile { get; set; }
+        public List<DisplayComponent>? DisplayComponents { get; set; }
     }
 
     class Input
@@ -151,6 +161,12 @@ namespace Pengu.Support
         public List<Expectation>? Expectations { get; set; }
     }
 
+    class Label
+    {
+        public string? Name { get; set; }
+        public string? Text { get; set; }
+    }
+
     class Exercise
     {
         [JsonIgnore]
@@ -158,7 +174,8 @@ namespace Pengu.Support
         public string? Name { get; set; }
         public List<CPU>? CPUs { get; set; }
         public List<Memory>? Memories { get; set; }
-        public List<SevenDigitDisplay>? SevenDigitDisplays { get; set; }
+        public List<SevenSegmentDigitDisplay>? SevenSegmentDigitDisplays { get; set; }
+        public List<Label> Labels { get; set; }
         public List<Window>? Windows { get; set; }
         public List<Solution>? Solutions { get; set; }
 

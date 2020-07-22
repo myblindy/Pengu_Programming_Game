@@ -62,13 +62,20 @@ namespace Pengu.Renderer
                 var exercise = Exercises.Get(testName);
 
                 var memories = new List<IMemory>();
+                var labels = new Dictionary<string, string>();
+                
                 IMemory FindMemory(string name) =>
                     memories!.First(mem => mem.MemoryName == name);
+                object FindAny(string name) =>
+                    labels!.TryGetValue(name, out var stringValue) ? (object)stringValue : FindMemory(name);
 
+                if (!(exercise.Labels is null))
+                    foreach (var label in exercise.Labels)
+                        labels.Add(label.Name!, label.Text!);
                 if (!(exercise.Memories is null))
                     memories.AddRange(exercise.Memories.Select(mem => (IMemory)new MemoryComponent(mem.Name!, mem.Size, mem.Data)));
-                if (!(exercise.SevenDigitDisplays is null))
-                    memories.AddRange(exercise.SevenDigitDisplays.Select(sdd => new SevenDigitDisplayComponent(sdd.Name!)));
+                if (!(exercise.SevenSegmentDigitDisplays is null))
+                    memories.AddRange(exercise.SevenSegmentDigitDisplays.Select(sdd => new SevenSegmentDigitDisplayComponent(sdd.Name!)));
                 memories.AddRange(exercise.CPUs!
                     .Select(cpu =>
                     {
@@ -91,7 +98,6 @@ namespace Pengu.Renderer
                         return vm;
                     }));
 
-
                 foreach (var window in exercise.Windows!)
                     switch (window.Type)
                     {
@@ -99,10 +105,12 @@ namespace Pengu.Renderer
                             AddHexEditorWindow(FindMemory(window.MemoryName!), window.PositionX, window.PositionY, window.MemoryName, window.LinesCount);
                             break;
                         case WindowType.Assembler:
-                            AddAssemblerWindow(string.IsNullOrWhiteSpace(window.LoadFile) ? null : exercise.ReadAllAssociatedFile(window.LoadFile),
-                                (VM)FindMemory(window.MemoryName!));
+                            AddNewWindow(new AssemblerWindow(context, this, string.IsNullOrWhiteSpace(window.LoadFile) ? null : exercise.ReadAllAssociatedFile(window.LoadFile),
+                                (VM)FindMemory(window.MemoryName!)));
                             break;
                         case WindowType.Playground:
+                            AddNewWindow(new PlaygroundWindow(context, this, window.PositionX!.Value, window.PositionY!.Value, window.Width!.Value, window.Height!.Value,
+                                window.DisplayComponents?.Select(c => (FindAny(c.Name!), c.PositionX, c.PositionY))));
                             break;
                         default:
                             throw new NotImplementedException();
@@ -176,10 +184,6 @@ namespace Pengu.Renderer
                 else
                     AddNewWindow(new HexEditorWindow<MemoryComponent>(context, this, (MemoryComponent)mem, positionX, positionY, title, linesCount));
             }
-
-            internal void AddPlaygroundWindow(VM vm) => AddNewWindow(new PlaygroundWindow(context, this, vm));
-
-            internal void AddAssemblerWindow(string? asm, VM vm) => AddNewWindow(new AssemblerWindow(context, this, asm, vm));
         }
     }
 }

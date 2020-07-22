@@ -22,14 +22,14 @@
           "type": "write_memory_literal",
           "inputRegister": "r0",
           "outputLiteral": 0,
-          "memoryName": "sevenDigitDisplayLeft"
+          "memoryName": "sevenSegmentDigitDisplayLeft"
         },
         {
           "irq": 46,
           "type": "write_memory_literal",
           "inputRegister": "r0",
           "outputLiteral": 0,
-          "memoryName": "sevenDigitDisplayRight"
+          "memoryName": "sevenSegmentDigitDisplayRight"
         }
       ]
     }
@@ -41,12 +41,22 @@
       "readOnly": true
     }
   ],
-  "sevenDigitDisplays": [
+  "sevenSegmentDigitDisplays": [
     {
-      "name": "sevenDigitDisplayLeft"
+      "name": "sevenSegmentDigitDisplayLeft"
     },
     {
-      "name": "sevenDigitDisplayRight"
+      "name": "sevenSegmentDigitDisplayRight"
+    }
+  ],
+  "labels": [
+    {
+      "name": "sevenSegmentDigitDisplayLeftLabel",
+      "text": "LEFT:"
+    },
+    {
+      "name": "sevenSegmentDigitDisplayRightLabel",
+      "text": "RIGHT:"
     }
   ],
   "windows": [
@@ -80,10 +90,34 @@
     },
     {
       "type": "playground",
-      "positionX": 0,
+      "positionX": 2,
       "positionY": 20,
+      "width": 20,
+      "height": 8,
       "backColor": "BrightBlack",
-      "foreColor": "White"
+      "foreColor": "White",
+      "displayComponents": [
+        {
+          "name": "sevenSegmentDigitDisplayLeftLabel",
+          "positionX": 1,
+          "positionY": 1
+        },
+        {
+          "name": "sevenSegmentDigitDisplayLeft",
+          "positionX": 1,
+          "positionY": 2
+        },
+        {
+          "name": "sevenSegmentDigitDisplayRightLabel",
+          "positionX": 8,
+          "positionY": 1
+        },
+        {
+          "name": "sevenSegmentDigitDisplayRight",
+          "positionX": 8,
+          "positionY": 2
+        }
+      ]
     }
   ],
   "solutions": [
@@ -99,12 +133,12 @@
         {
           "expectationGroup": [
             {
-              "memoryName": "sevenDigitDisplayLeft",
+              "memoryName": "sevenSegmentDigitDisplayLeft",
               "memoryIndex": 0,
               "data": "0x8"
             },
             {
-              "memoryName": "sevenDigitDisplayRight",
+              "memoryName": "sevenSegmentDigitDisplayRight",
               "memoryIndex": 0,
               "data": "0x5"
             }

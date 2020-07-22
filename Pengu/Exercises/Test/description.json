@@ -145,6 +145,31 @@
           ]
         }
       ]
+    },
+    {
+      "inputs": [
+        {
+          "memoryName": "CPU0",
+          "memoryIndex": 0,
+          "data": "0x3A"
+        }
+      ],
+      "expectations": [
+        {
+          "expectationGroup": [
+            {
+              "memoryName": "sevenSegmentDigitDisplayLeft",
+              "memoryIndex": 0,
+              "data": "0x6D"
+            },
+            {
+              "memoryName": "sevenSegmentDigitDisplayRight",
+              "memoryIndex": 0,
+              "data": "0x7F"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

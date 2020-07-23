@@ -69,6 +69,7 @@ namespace Pengu.Renderer.UI
                         SyntaxHighlightType.Instruction => FontColor.DarkRed,
                         SyntaxHighlightType.Register => FontColor.BrightMagenta,
                         SyntaxHighlightType.NumericBaseSpecifier => FontColor.BrightRed,
+                        SyntaxHighlightType.AtAddress => FontColor.DarkBlue,
                         _ => throw new NotImplementedException()
                     }, false));
             }
@@ -102,7 +103,28 @@ namespace Pengu.Renderer.UI
         {
             if (key == Keys.Right && action != InputState.Release)
             {
-                if (lineCharacterIndex >= lines[verticalOffset + lineIndex].Length)
+                if (modifiers.HasFlag(ModifierKeys.Control))
+                {
+                    if (lineCharacterIndex >= lines[verticalOffset + lineIndex].Length)
+                    {
+                        if (verticalOffset + lineIndex < lines.Count - 1)
+                            (lineIndex, lineCharacterIndex) = (lineIndex + 1, lines[verticalOffset + lineIndex + 1].CountWhile(char.IsWhiteSpace));
+                    }
+                    else
+                    {
+                        var line = lines[verticalOffset + lineIndex];
+
+                        // 1. move along either letters/digits or symbols 
+                        if (char.IsLetterOrDigit(line[lineCharacterIndex]))
+                            while (lineCharacterIndex < line.Length && char.IsLetterOrDigit(line[lineCharacterIndex])) ++lineCharacterIndex;
+                        else if (char.IsSymbol(line[lineCharacterIndex]) || char.IsPunctuation(line[lineCharacterIndex]))
+                            while (lineCharacterIndex < line.Length && (char.IsSymbol(line[lineCharacterIndex]) || char.IsPunctuation(line[lineCharacterIndex]))) ++lineCharacterIndex;
+
+                        // 2. move along spaces
+                        while (lineCharacterIndex < line.Length && char.IsWhiteSpace(line[lineCharacterIndex])) ++lineCharacterIndex;
+                    }
+                }
+                else if (lineCharacterIndex >= lines[verticalOffset + lineIndex].Length)
                 {
                     if (verticalOffset + lineIndex < lines.Count - 1)
                         (lineIndex, lineCharacterIndex) = (lineIndex + 1, 0);
@@ -115,7 +137,32 @@ namespace Pengu.Renderer.UI
 
             if (key == Keys.Left && action != InputState.Release)
             {
-                if (lineCharacterIndex == 0)
+                if (modifiers.HasFlag(ModifierKeys.Control))
+                {
+                    if (lineCharacterIndex == 0)
+                    {
+                        if (verticalOffset + lineIndex > 0)
+                        {
+                            var previousLine = lines[verticalOffset + lineIndex - 1];
+                            (lineIndex, lineCharacterIndex) = (lineIndex - 1, previousLine.Length - previousLine.CountWhileLast(char.IsWhiteSpace));
+                        }
+                    }
+                    else
+                    {
+                        var line = lines[verticalOffset + lineIndex];
+
+                        // 1. move along spaces
+                        while (lineCharacterIndex > 0 && char.IsWhiteSpace(line[lineCharacterIndex - 1])) --lineCharacterIndex;
+
+                        // 2. move along either letters/digits or symbols 
+                        if (lineCharacterIndex > 0)
+                            if (char.IsLetterOrDigit(line[lineCharacterIndex - 1]))
+                                while (lineCharacterIndex > 0 && char.IsLetterOrDigit(line[lineCharacterIndex - 1])) --lineCharacterIndex;
+                            else if (char.IsSymbol(line[lineCharacterIndex - 1]) || char.IsPunctuation(line[lineCharacterIndex - 1]))
+                                while (lineCharacterIndex > 0 && (char.IsSymbol(line[lineCharacterIndex - 1]) || char.IsPunctuation(line[lineCharacterIndex - 1]))) --lineCharacterIndex;
+                    }
+                }
+                else if (lineCharacterIndex == 0)
                 {
                     if (verticalOffset + lineIndex > 0)
                         (lineIndex, lineCharacterIndex) = (lineIndex - 1, lines[verticalOffset + lineIndex - 1].Length);
@@ -186,6 +233,24 @@ namespace Pengu.Renderer.UI
                     lines.RemoveAt(verticalOffset + lineIndex + 1);
                     syntaxHighlightDirty = contentFontStringDirty = true;
                 }
+            }
+
+            if (key == Keys.Home && action == InputState.Press && lines.Any())
+            {
+                if (modifiers.HasFlag(ModifierKeys.Control))
+                    lineIndex = lineCharacterIndex = 0;
+                else
+                    lineCharacterIndex = 0;
+                syntaxHighlightDirty = contentFontStringDirty = true;
+            }
+
+            if (key == Keys.End && action == InputState.Press && lines.Any())
+            {
+                if (modifiers.HasFlag(ModifierKeys.Control))
+                    (lineIndex, lineCharacterIndex) = (lines.Count - verticalOffset - 1, lines[^1].Length);
+                else
+                    lineCharacterIndex = lines[verticalOffset + lineIndex].Length;
+                syntaxHighlightDirty = contentFontStringDirty = true;
             }
 
             // ensure cursor visible

@@ -21,7 +21,7 @@ namespace Pengu
 
             await Exercises.ReadExercises().ConfigureAwait(true);
 
-            using var renderer = new VulkanContext(debug);
+            using var renderer = new VulkanContext(context => new PenguGameSurface(context), debug);
             renderer.Run();
         }
     }

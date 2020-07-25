@@ -7,10 +7,10 @@ using System.Numerics;
 
 namespace Pengu.Renderer.UI
 {
-    abstract class BaseWindow : IRenderableModule
+    abstract class BaseWindow : RenderableModule
     {
         protected readonly VulkanContext context;
-        protected readonly VulkanContext.GameSurface surface;
+        protected readonly PenguGameSurface surface;
         protected int positionX, positionY;
 
         public VulkanContext.FontString ChromeFontString { get; private set; }
@@ -30,9 +30,9 @@ namespace Pengu.Renderer.UI
         Vector2 lastMouseCharacterPosition, newMouseCharacterPosition;
 
         protected VulkanContext.FontString AllocateWindowFontString() =>
-             context.monospaceFont.AllocateString(new Vector2(-1f * context.extent.AspectRatio, -1), 0.055f);
+             surface.monospaceFont.AllocateString(new Vector2(-1f * context.Extent.AspectRatio, -1), 0.055f);
 
-        public BaseWindow(VulkanContext context, VulkanContext.GameSurface surface, string title, int positionX = 0, int positionY = 0,
+        public BaseWindow(VulkanContext context, PenguGameSurface surface, string title, int positionX = 0, int positionY = 0,
             FontColor chromeBackground = FontColor.Black, FontColor chromeForeground = FontColor.White)
         {
             (this.context, this.surface, chromeTitle, this.positionX, this.positionY, this.chromeBackground, this.chromeForeground) =
@@ -47,7 +47,7 @@ namespace Pengu.Renderer.UI
         protected abstract void FillContentFontString(bool first);
 
         bool firstFillFontString = true;
-        public virtual CommandBuffer[] PreRender(uint nextImage)
+        public override CommandBuffer[] PreRender(uint nextImage)
         {
             if (ChromeFontStringDirty || contentFontStringDirty)
             {
@@ -84,11 +84,11 @@ namespace Pengu.Renderer.UI
                     offset: surface.CharacterToScreenSize(positionX - 1, positionY - 1, ChromeFontString), fillBackground: true);
         }
 
-        public virtual bool ProcessCharacter(string character, ModifierKeys modifiers) => false;
+        public override bool ProcessCharacter(string character, ModifierKeys modifiers) => false;
 
-        public virtual bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers) => false;
+        public override bool ProcessKey(Keys key, int scanCode, InputState action, ModifierKeys modifiers) => false;
 
-        public virtual bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers)
+        public override bool ProcessMouseButton(MouseButton button, InputState action, ModifierKeys modifiers)
         {
             var newPos = new Vector2(positionX, positionY) + newMouseCharacterPosition - lastMouseCharacterPosition;
             if (newMouseCharacterPosition.X < newPos.X - 1 || newMouseCharacterPosition.Y < newPos.Y - 1 ||
@@ -112,7 +112,7 @@ namespace Pengu.Renderer.UI
             return true;
         }
 
-        public virtual bool ProcessMouseMove(double x, double y)
+        public override bool ProcessMouseMove(double x, double y)
         {
             newMouseCharacterPosition = surface.ScreenToCharacterSize(new Vector2((float)x * 2, (float)y * 2), ChromeFontString);
 
@@ -130,6 +130,6 @@ namespace Pengu.Renderer.UI
             return false;
         }
 
-        public abstract void UpdateLogic(TimeSpan elapsedTime);
+        protected override void Dispose(bool disposing) { }
     }
 }

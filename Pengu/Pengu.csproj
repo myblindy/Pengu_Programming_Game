@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <PackageReference Include="Macross.Json.Extensions" Version="1.5.0" />
-    <PackageReference Include="MB.Pengu.Engine" Version="0.1.5" />
+    <PackageReference Include="MB.Pengu.Engine" Version="0.1.7" />
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.3.0-beta2.final">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

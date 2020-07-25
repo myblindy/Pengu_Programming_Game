@@ -19,7 +19,7 @@ namespace Pengu.Renderer.UI
         public override int Width => width;
         public override int Height => height;
 
-        public PlaygroundWindow(VulkanContext context, VulkanContext.GameSurface surface, int positionX, int positionY, int width, int height,
+        public PlaygroundWindow(VulkanContext context, PenguGameSurface surface, int positionX, int positionY, int width, int height,
             IEnumerable<(object data, int posX, int posY)>? components) :
             base(context, surface, "PLAY", positionX: positionX, positionY: positionY, chromeBackground: FontColor.BrightBlack)
         {

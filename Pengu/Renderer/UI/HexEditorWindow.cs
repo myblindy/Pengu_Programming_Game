@@ -21,7 +21,7 @@ namespace Pengu.Renderer.UI
 
         bool done, running, solved;
 
-        public HexEditorWindow(VulkanContext context, VulkanContext.GameSurface surface, TMemory memory,
+        public HexEditorWindow(VulkanContext context, PenguGameSurface surface, TMemory memory,
             int? positionX = null, int? positionY = null, string? title = null, int? linesCount = null)
             : base(context, surface, "HEX EDITOR" + (string.IsNullOrWhiteSpace(title) ? "" : $" - {title}"),
                   positionX: positionX ?? 8, positionY: positionY ?? 2, chromeBackground: FontColor.Black, chromeForeground: FontColor.BrightGreen)
@@ -49,9 +49,9 @@ namespace Pengu.Renderer.UI
             var value0 = leftAddress0 + 4 + 3 + 3 * (halfIndexInLine / 2) + halfIndexInLine % 2;
 
             fontOverride.Clear();
-            fontOverride.Add((headerAddress0, 2, chromeBackground, FontColor.BrightCyan, true));
-            fontOverride.Add((leftAddress0, 4, chromeBackground, FontColor.BrightCyan, true));
-            fontOverride.Add((value0, 1, chromeBackground, FontColor.BrightCyan, true));
+            fontOverride.Add(new FontOverride(headerAddress0, 2, chromeBackground, FontColor.BrightCyan, true));
+            fontOverride.Add(new FontOverride(leftAddress0, 4, chromeBackground, FontColor.BrightCyan, true));
+            fontOverride.Add(new FontOverride(value0, 1, chromeBackground, FontColor.BrightCyan, true));
 
             string? additionalText = null;
             var editorLineBytes31Lines = new string('─', editorLineBytes * 3 + 1);
@@ -67,8 +67,8 @@ namespace Pengu.Renderer.UI
                 var ip1 = (3 + ipLine) * frameLength + 3 + 5 + 0;
                 var ip1len = 3 * instructionByteSize - ip0len;
 
-                fontOverride.Add((ip0, ip0len, done ? FontColor.DarkGreen : FontColor.DarkRed, done ? chromeBackground : FontColor.White, false));
-                fontOverride.Add((ip1, ip1len, done ? FontColor.DarkGreen : FontColor.DarkRed, done ? chromeBackground : FontColor.White, false));
+                fontOverride.Add(new FontOverride(ip0, ip0len, done ? FontColor.DarkGreen : FontColor.DarkRed, done ? chromeBackground : FontColor.White, false));
+                fontOverride.Add(new FontOverride(ip1, ip1len, done ? FontColor.DarkGreen : FontColor.DarkRed, done ? chromeBackground : FontColor.White, false));
 
                 var regFlags = (solved ? "(SOLVED) " : "         ") +
                     string.Concat(vm.Registers.Select((val, idx) => $"R{idx}: 0x{val:X2} ")) +
@@ -83,7 +83,7 @@ namespace Pengu.Renderer.UI
                     " SEL  ASM: " + disasmSelected.PadRight(addressSizeBytes * 2 + editorLineBytes * 3 - 7);
             }
 
-            fontOverride.Sort((a, b) => a.start.CompareTo(b.start));
+            fontOverride.Sort((a, b) => a.Start.CompareTo(b.Start));
 
             ContentFontString.Set(
                 new string(' ', addressSizeBytes * 2 + 2) + "│" + string.Concat(Enumerable.Range(0, editorLineBytes).Select(idx => $" {idx:X2}")) + " \n" +

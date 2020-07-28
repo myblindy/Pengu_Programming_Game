@@ -11,25 +11,16 @@
     <Prefer32Bit>false</Prefer32Bit>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <PlatformTarget>x64</PlatformTarget>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Macross.Json.Extensions" Version="1.5.0" />
+    <PackageReference Include="MB.Pengu.Engine" Version="0.1.7" />
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.3.0-beta2.final">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="morelinq" Version="3.3.2" />
-    <PackageReference Include="SharpVk" Version="1.0.0-dev496" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-rc0003" />
   </ItemGroup>
 
   <ItemGroup>
@@ -64,19 +55,5 @@
       <DependentUpon>Instructions.tt</DependentUpon>
     </None>
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Media\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="GLFW.NET">
-      <HintPath>..\Pengu.Dependencies\GLFW.NET.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <Import Project="..\Pengu.Dependencies\Pengu.Dependencies.projitems" Label="Shared" />
-
-  <ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
 
 </Project>

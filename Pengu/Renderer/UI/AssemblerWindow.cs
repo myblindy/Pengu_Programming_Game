@@ -25,7 +25,7 @@ namespace Pengu.Renderer.UI
         bool syntaxHighlightDirty = true;
         int verticalOffset, lineIndex, lineCharacterIndex;
 
-        public AssemblerWindow(VulkanContext context, VulkanContext.GameSurface surface, string? asm, VM vm) :
+        public AssemblerWindow(VulkanContext context, PenguGameSurface surface, string? asm, VM vm) :
             base(context, surface, "ASSEMBLER", positionX: 90, positionY: 2, chromeBackground: FontColor.Black, chromeForeground: FontColor.BrightGreen)
         {
             this.vm = vm;

@@ -7,6 +7,42 @@ namespace Pengu.Support
 {
     static class Extensions
     {
+        public static int CountWhile<T>(this IEnumerable<T> source, Func<T, bool> test)
+        {
+            int count = 0;
+            foreach (var item in source)
+                if (test(item))
+                    ++count;
+                else
+                    break;
+
+            return count;
+        }
+
+        public static int CountWhileLast<T>(this IEnumerable<T> source, Func<T, bool> test)
+        {
+            if (source is string s)
+            {
+                int idx;
+                for (idx = s.Length - 1; test((T)(object)s[idx]) && idx >= 0; --idx) { }
+                return s.Length - idx - 1;
+            }
+
+            bool lastOkay = false;
+            int count = 0, lastOkayIndex = 0;
+            foreach (var item in source)
+                if (test(item))
+                {
+                    if (!lastOkay)
+                        (lastOkayIndex, lastOkay) = (count, true);
+                    ++count;
+                }
+                else
+                    lastOkay = false;
+
+            return lastOkay ? count - lastOkayIndex : 0;
+        }
+
         public static unsafe void CopyTo<T>(this Span<T> source, IntPtr dest, int destSize) where T : struct =>
             MemoryMarshal.Cast<T, byte>(source).CopyTo(new Span<byte>(dest.ToPointer(), destSize));
 

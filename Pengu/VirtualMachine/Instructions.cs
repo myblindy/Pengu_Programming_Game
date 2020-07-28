@@ -1846,7 +1846,15 @@ namespace Pengu.VirtualMachine
 						while(endIdx < line.Length && (char.IsLetterOrDigit(line[endIdx]) || line[endIdx] == '.')) ++endIdx;
 
 						yield return new SyntaxHighlightEntry(SyntaxHighlightType.Label, lineIdx, idx, endIdx - idx);
-						idx = endIdx;
+						idx = endIdx - 1;
+					}
+					else if(line[idx] == '@')
+					{
+						var endIdx = idx + 1;
+						while(endIdx < line.Length && (char.IsLetterOrDigit(line[endIdx]))) ++endIdx;
+
+						yield return new SyntaxHighlightEntry(SyntaxHighlightType.AtAddress, lineIdx, idx, endIdx - idx);
+						idx = endIdx - 1;
 					}
 					else if(char.IsLetter(line[idx]))
 					{
@@ -1859,7 +1867,7 @@ namespace Pengu.VirtualMachine
                         else if (word[0] == 'r' && word.Skip(1).All(char.IsDigit))
 							yield return new SyntaxHighlightEntry(SyntaxHighlightType.Register, lineIdx, idx, endIdx - idx);
 
-						idx = endIdx;
+						idx = endIdx - 1;
 					}
 					else if(line[idx] == '0' && idx < line.Length - 2 && (line[idx + 1] == 'x' || line[idx + 1] == 'b') && char.IsLetterOrDigit(line[idx + 2]))
 					{
@@ -1885,6 +1893,7 @@ namespace Pengu.VirtualMachine
 		Instruction,
 		Register,
 		NumericBaseSpecifier,
+		AtAddress,
 	}
 
 	struct SyntaxHighlightEntry

@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Pengu.FontGen": {
-      "commandName": "Project",
-      "commandLineArgs": "\"pt mono\" 60"
-    }
-  }
-}

@@ -18,13 +18,16 @@ using Buffer = SharpVk.Buffer;
 using Version = SharpVk.Version;
 using Constants = SharpVk.Constants;
 using Exception = System.Exception;
+using Semaphore = SharpVk.Semaphore;
 using Pengu.Support;
+using System.Threading;
 
 namespace Pengu.Renderer
 {
     public partial class VulkanContext : IDisposable
     {
         readonly NativeWindow window;
+        readonly UIThreadSynchronizationContext uIThreadSynchronizationContext;
         readonly Instance instance;
         readonly DebugReportCallback? debugReportCallback;
 
@@ -162,6 +165,10 @@ namespace Pengu.Renderer
             static void MouseButtonCallback(object? sender, MouseButtonEventArgs args) => ContextInstance?.InputActionQueue.Enqueue(
                 new MouseButtonAction { Action = args.Action, Button = args.Button, Modifiers = args.Modifiers });
             window.MouseButton += MouseButtonCallback;
+
+            // set up the synchronization context
+            uIThreadSynchronizationContext = new UIThreadSynchronizationContext();
+            SynchronizationContext.SetSynchronizationContext(uIThreadSynchronizationContext);
 
             const string StandardValidationLayerName = "VK_LAYER_LUNARG_standard_validation";
 
@@ -607,6 +614,7 @@ namespace Pengu.Renderer
                 DrawFrame();
 
                 Glfw.PollEvents();
+                uIThreadSynchronizationContext.RunAllQueuedActions();
 
                 lastElapsed = totalElapsed;
             }

@@ -266,10 +266,8 @@ namespace Pengu.Renderer.UI
 
             if (key == Keys.F6 && action == InputState.Press)
             {
-                var asm = string.Join('\n', lines);
-                vm.Memory.SetAll((byte)0);
-                InstructionSet.Assemble(vm, asm);
-                vm.FireRefreshRequired();
+                // queue the assembly task
+                _ = InstructionSet.AssembleAsync(vm, string.Join('\n', lines));
                 return true;
             }
 

@@ -122,6 +122,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using Pengu.Support;
 
@@ -257,177 +258,184 @@ namespace Pengu.VirtualMachine
             return null;
 		}
 
-        public static void Assemble(VM vm, string s)
+        public static async Task AssembleAsync(VM vm, string s)
         {
-			ushort memidx = 0, org = 0;
-			int i0, i1;
+			var mem = vm.CloneAsMemory();
 
-			var labels = new Dictionary<string, ushort>();
-
-            var reader = new StringReader(s);
-            string? line;
-			int lineidx = 0;
-            var tokens = new List<string>();
-            while ((line = reader.ReadLine()) != null)
-            {
-				++lineidx;
-
-                tokens.Clear();
-                for (int idx = 0; idx < line.Length && !char.IsWhiteSpace(line[idx]); ++idx)
-                {
-					while (idx < line.Length && char.IsWhiteSpace(line[idx])) 
-						++idx;
-
-                    var start = idx;
-					if(idx < line.Length && line[idx] == '$')
-					{
-						++idx;																// $
-						while (idx < line.Length && char.IsWhiteSpace(line[idx]))			// spaces
-							++idx;
-						while (idx < line.Length && !char.IsWhiteSpace(line[idx]))			// +
-							++idx;					
-						while (idx < line.Length && char.IsWhiteSpace(line[idx]))			// spaces
-							++idx;
-						while (idx < line.Length && !char.IsWhiteSpace(line[idx]))			// value
-							++idx;					
-					}
-					else
-						while (idx < line.Length && !char.IsWhiteSpace(line[idx]))
-							++idx;
-                    tokens.Add(line[start..idx]);
-                }
-
-				redo:
-				if(!tokens.Any() || tokens[0].StartsWith(";")) continue;
-
-                static int ParseBinaryAsInt32(ReadOnlySpan<char> chars)
-                {
-                    int result = 0, mask = 1 << (chars.Length - 1);
-                    foreach (var c in chars)
-                    {
-                        result += mask * (c - '0');
-                        mask >>= 1;
-                    }
-
-                    return result;
-                }
-
-                int GetNumber(string n) => n.StartsWith("0x") ? Convert.ToInt32(n, 16) : n.StartsWith("0b") ? ParseBinaryAsInt32(n.AsSpan(2)) : n[0] == '.' ? labels[n[1..]] : int.Parse(n);
-
-				bool IsReg(string s, out int r) 
-				{ 
-					var m = Regex.Match(s, @"^r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsI8(string s, out int r) 
-				{ 
-					var m = Regex.Match(s, @"^(\d+|0x[\dA-Fa-f]+|0b[01]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsPReg(string s, out int r) 
-				{ 
-					var m = Regex.Match(s, @"^\[r(\d+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsPI8(string s, out int r) 
-				{ 
-					var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+|0b[01]+|\.\w+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsRReg(string s, out int r)
-				{
-					var m = Regex.Match(s, @"^\$\s*\+\s*r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsRI8(string s, out int r)
-				{
-					var m = Regex.Match(s, @"^\$\s*\+\s*(\d+|0x[\dA-Fa-f]+|0b[01]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsAtAddress(string s, out int r)
-				{ 
-					var m = Regex.Match(s, @"^@(\d+|0x[\dA-Fa-f]+|0b[01]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-
-                if (tokens.Count == 1 && IsAtAddress(tokens[0], out i0))
-                {
-                    // @addr
-                    memidx = (ushort)i0;
-                    continue;
-                }
-
-                if (tokens.Count >= 1 && tokens[0].FirstOrDefault() == '.')
-                {
-                    labels.Add(tokens[0][1..], memidx);
-                    tokens.RemoveAt(0);
-                    goto redo;
-                }
-
-				if(tokens.Count == 2 && tokens[0].Equals("DB", StringComparison.OrdinalIgnoreCase) && IsI8(tokens[1], out i0))
-				{
-					// db i8
-					vm.Memory[memidx++] = (byte)i0;
-					continue;
-				}
-
-				if(tokens.Count == 1 && tokens[0].Equals("ORG", StringComparison.OrdinalIgnoreCase))
-				{
-					org = memidx;
-					continue;
-				}
-
-				<# foreach(var namegrp in instructions.Select(w => w.name).GroupBy(w => w.Split('_')[0])) { #>
-					if(tokens[0].Equals("<#= namegrp.Key #>", StringComparison.OrdinalIgnoreCase))
-					{
-						<# foreach(var name in namegrp)
-						{
-							var split = name.Split('_');
-						#>
-						if(tokens.Count == <#= split.Length #>
-							<# int idx = 0; foreach(var token in split.Skip(1)) { #> && Is<#= token #>(tokens[<#= idx + 1 #>], out i<#= idx++ #>) <# } #>)
-						{
-							vm.Memory[memidx++] = (byte)Instruction.<#= name #>;
-							<# if(split.Length == 3) { #>
-								<# if(split[1].EndsWith("Reg", StringComparison.OrdinalIgnoreCase) && split[2].EndsWith("Reg", StringComparison.OrdinalIgnoreCase)) { #>
-									vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-								<# } else { #>
-									vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-								<# } #>
-							<# } else if(split.Length == 2) { #>
-								vm.Memory[memidx++] = (byte)i0;
-							<# } #>
-							continue;
-						}
-						<# } #>
-					}
-				<# } #>
-
-				throw new AssemblerException(lineidx - 1, line);
-            }
-
-			// write org
-			switch(vm.Type)
+			await Task.Run(() =>
 			{
-				case VMType.BitLength8:
-					vm.Memory[^1] = (byte)org;
-					break;
-				case VMType.BitLength16:
-					MemoryMarshal.Write(vm.Memory.AsSpan(^2..), ref org);
-					break;
-				default:
-					throw new InvalidOperationException($"Invalid VM type enountered: {vm.Type}.");
-			}
+				ushort memidx = 0, org = 0;
+				int i0, i1;
 
+				var labels = new Dictionary<string, ushort>();
+
+				var reader = new StringReader(s);
+				string? line;
+				int lineidx = 0;
+				var tokens = new List<string>();
+				while ((line = reader.ReadLine()) != null)
+				{
+					++lineidx;
+
+					tokens.Clear();
+					for (int idx = 0; idx < line.Length && !char.IsWhiteSpace(line[idx]); ++idx)
+					{
+						while (idx < line.Length && char.IsWhiteSpace(line[idx])) 
+							++idx;
+
+						var start = idx;
+						if(idx < line.Length && line[idx] == '$')
+						{
+							++idx;																// $
+							while (idx < line.Length && char.IsWhiteSpace(line[idx]))			// spaces
+								++idx;
+							while (idx < line.Length && !char.IsWhiteSpace(line[idx]))			// +
+								++idx;					
+							while (idx < line.Length && char.IsWhiteSpace(line[idx]))			// spaces
+								++idx;
+							while (idx < line.Length && !char.IsWhiteSpace(line[idx]))			// value
+								++idx;					
+						}
+						else
+							while (idx < line.Length && !char.IsWhiteSpace(line[idx]))
+								++idx;
+						tokens.Add(line[start..idx]);
+					}
+
+					redo:
+					if(!tokens.Any() || tokens[0].StartsWith(";")) continue;
+
+					static int ParseBinaryAsInt32(ReadOnlySpan<char> chars)
+					{
+						int result = 0, mask = 1 << (chars.Length - 1);
+						foreach (var c in chars)
+						{
+							result += mask * (c - '0');
+							mask >>= 1;
+						}
+
+						return result;
+					}
+
+					int GetNumber(string n) => n.StartsWith("0x") ? Convert.ToInt32(n, 16) : n.StartsWith("0b") ? ParseBinaryAsInt32(n.AsSpan(2)) : n[0] == '.' ? labels[n[1..]] : int.Parse(n);
+
+					bool IsReg(string s, out int r) 
+					{ 
+						var m = Regex.Match(s, @"^r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsI8(string s, out int r) 
+					{ 
+						var m = Regex.Match(s, @"^(\d+|0x[\dA-Fa-f]+|0b[01]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsPReg(string s, out int r) 
+					{ 
+						var m = Regex.Match(s, @"^\[r(\d+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsPI8(string s, out int r) 
+					{ 
+						var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+|0b[01]+|\.\w+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsRReg(string s, out int r)
+					{
+						var m = Regex.Match(s, @"^\$\s*\+\s*r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsRI8(string s, out int r)
+					{
+						var m = Regex.Match(s, @"^\$\s*\+\s*(\d+|0x[\dA-Fa-f]+|0b[01]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsAtAddress(string s, out int r)
+					{ 
+						var m = Regex.Match(s, @"^@(\d+|0x[\dA-Fa-f]+|0b[01]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+
+					if (tokens.Count == 1 && IsAtAddress(tokens[0], out i0))
+					{
+						// @addr
+						memidx = (ushort)i0;
+						continue;
+					}
+
+					if (tokens.Count >= 1 && tokens[0].FirstOrDefault() == '.')
+					{
+						labels.Add(tokens[0][1..], memidx);
+						tokens.RemoveAt(0);
+						goto redo;
+					}
+
+					if(tokens.Count == 2 && tokens[0].Equals("DB", StringComparison.OrdinalIgnoreCase) && IsI8(tokens[1], out i0))
+					{
+						// db i8
+						mem.Memory[memidx++] = (byte)i0;
+						continue;
+					}
+
+					if(tokens.Count == 1 && tokens[0].Equals("ORG", StringComparison.OrdinalIgnoreCase))
+					{
+						org = memidx;
+						continue;
+					}
+
+					<# foreach(var namegrp in instructions.Select(w => w.name).GroupBy(w => w.Split('_')[0])) { #>
+						if(tokens[0].Equals("<#= namegrp.Key #>", StringComparison.OrdinalIgnoreCase))
+						{
+							<# foreach(var name in namegrp)
+							{
+								var split = name.Split('_');
+							#>
+							if(tokens.Count == <#= split.Length #>
+								<# int idx = 0; foreach(var token in split.Skip(1)) { #> && Is<#= token #>(tokens[<#= idx + 1 #>], out i<#= idx++ #>) <# } #>)
+							{
+								mem.Memory[memidx++] = (byte)Instruction.<#= name #>;
+								<# if(split.Length == 3) { #>
+									<# if(split[1].EndsWith("Reg", StringComparison.OrdinalIgnoreCase) && split[2].EndsWith("Reg", StringComparison.OrdinalIgnoreCase)) { #>
+										mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+									<# } else { #>
+										mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+									<# } #>
+								<# } else if(split.Length == 2) { #>
+									mem.Memory[memidx++] = (byte)i0;
+								<# } #>
+								continue;
+							}
+							<# } #>
+						}
+					<# } #>
+
+					throw new AssemblerException(lineidx - 1, line);
+				}
+
+				// write org
+				switch(vm.Type)
+				{
+					case VMType.BitLength8:
+						mem.Memory[^1] = (byte)org;
+						break;
+					case VMType.BitLength16:
+						MemoryMarshal.Write(mem.Memory.AsSpan(^2..), ref org);
+						break;
+					default:
+						throw new InvalidOperationException($"Invalid VM type enountered: {vm.Type}.");
+				}
+			}).ConfigureAwait(true);
+
+			vm.CopyFromMemory(mem);
 			vm.Reset();
+			vm.FireRefreshRequired();
         }
 
 		private static readonly HashSet<string> Instructions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

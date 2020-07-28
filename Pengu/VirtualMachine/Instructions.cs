@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using Pengu.Support;
 
@@ -1056,772 +1057,779 @@ namespace Pengu.VirtualMachine
             return null;
 		}
 
-        public static void Assemble(VM vm, string s)
+        public static async Task AssembleAsync(VM vm, string s)
         {
-			ushort memidx = 0, org = 0;
-			int i0, i1;
+			var mem = vm.CloneAsMemory();
 
-			var labels = new Dictionary<string, ushort>();
-
-            var reader = new StringReader(s);
-            string? line;
-			int lineidx = 0;
-            var tokens = new List<string>();
-            while ((line = reader.ReadLine()) != null)
-            {
-				++lineidx;
-
-                tokens.Clear();
-                for (int idx = 0; idx < line.Length && !char.IsWhiteSpace(line[idx]); ++idx)
-                {
-					while (idx < line.Length && char.IsWhiteSpace(line[idx])) 
-						++idx;
-
-                    var start = idx;
-					if(idx < line.Length && line[idx] == '$')
-					{
-						++idx;																// $
-						while (idx < line.Length && char.IsWhiteSpace(line[idx]))			// spaces
-							++idx;
-						while (idx < line.Length && !char.IsWhiteSpace(line[idx]))			// +
-							++idx;					
-						while (idx < line.Length && char.IsWhiteSpace(line[idx]))			// spaces
-							++idx;
-						while (idx < line.Length && !char.IsWhiteSpace(line[idx]))			// value
-							++idx;					
-					}
-					else
-						while (idx < line.Length && !char.IsWhiteSpace(line[idx]))
-							++idx;
-                    tokens.Add(line[start..idx]);
-                }
-
-				redo:
-				if(!tokens.Any() || tokens[0].StartsWith(";")) continue;
-
-                static int ParseBinaryAsInt32(ReadOnlySpan<char> chars)
-                {
-                    int result = 0, mask = 1 << (chars.Length - 1);
-                    foreach (var c in chars)
-                    {
-                        result += mask * (c - '0');
-                        mask >>= 1;
-                    }
-
-                    return result;
-                }
-
-                int GetNumber(string n) => n.StartsWith("0x") ? Convert.ToInt32(n, 16) : n.StartsWith("0b") ? ParseBinaryAsInt32(n.AsSpan(2)) : n[0] == '.' ? labels[n[1..]] : int.Parse(n);
-
-				bool IsReg(string s, out int r) 
-				{ 
-					var m = Regex.Match(s, @"^r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsI8(string s, out int r) 
-				{ 
-					var m = Regex.Match(s, @"^(\d+|0x[\dA-Fa-f]+|0b[01]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsPReg(string s, out int r) 
-				{ 
-					var m = Regex.Match(s, @"^\[r(\d+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsPI8(string s, out int r) 
-				{ 
-					var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+|0b[01]+|\.\w+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsRReg(string s, out int r)
-				{
-					var m = Regex.Match(s, @"^\$\s*\+\s*r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsRI8(string s, out int r)
-				{
-					var m = Regex.Match(s, @"^\$\s*\+\s*(\d+|0x[\dA-Fa-f]+|0b[01]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-				bool IsAtAddress(string s, out int r)
-				{ 
-					var m = Regex.Match(s, @"^@(\d+|0x[\dA-Fa-f]+|0b[01]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
-					r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
-					return m.Success; 
-				}
-
-                if (tokens.Count == 1 && IsAtAddress(tokens[0], out i0))
-                {
-                    // @addr
-                    memidx = (ushort)i0;
-                    continue;
-                }
-
-                if (tokens.Count >= 1 && tokens[0].FirstOrDefault() == '.')
-                {
-                    labels.Add(tokens[0][1..], memidx);
-                    tokens.RemoveAt(0);
-                    goto redo;
-                }
-
-				if(tokens.Count == 2 && tokens[0].Equals("DB", StringComparison.OrdinalIgnoreCase) && IsI8(tokens[1], out i0))
-				{
-					// db i8
-					vm.Memory[memidx++] = (byte)i0;
-					continue;
-				}
-
-				if(tokens.Count == 1 && tokens[0].Equals("ORG", StringComparison.OrdinalIgnoreCase))
-				{
-					org = memidx;
-					continue;
-				}
-
-									if(tokens[0].Equals("Nop", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 1
-							)
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Nop;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Mov", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_Reg_PI8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_Reg_PReg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsPI8(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_PI8_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsPI8(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_PI8_Reg;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsPI8(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_PI8_PI8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsPI8(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_PI8_PReg;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsPReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_PReg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsPReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_PReg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsPReg(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_PReg_PI8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsPReg(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Mov_PReg_PReg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("Int", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Int_I8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Int_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Jmp", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jmp_I8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jmp_RI8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jmp_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jmp_RReg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Cmp", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsI8(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Cmp_I8_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Cmp_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Cmp_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("Jl", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jl_I8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jl_RI8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jl_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jl_RReg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Jle", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jle_I8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jle_RI8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jle_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jle_RReg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Jg", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jg_I8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jg_RI8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jg_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jg_RReg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Jge", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jge_I8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jge_RI8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jge_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jge_RReg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Je", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Je_I8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Je_RI8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Je_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Je_RReg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Jne", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jne_I8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jne_RI8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jne_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Jne_RReg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Push", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Push_I8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Push_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Pop", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Pop_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Call", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Call_I8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRI8(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Call_RI8;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Call_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-												if(tokens.Count == 2
-							 && IsRReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Call_RReg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Ret", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 1
-							)
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Ret;
-														continue;
-						}
-											}
-									if(tokens[0].Equals("Shl", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Shl_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Shl_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("Shr", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Shr_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Shr_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("Or", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Or_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Or_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("And", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.And_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.And_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("Xor", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Xor_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Xor_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("AddI", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.AddI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.AddI_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("SubI", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.SubI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.SubI_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("MulI", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.MulI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.MulI_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("DivI", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.DivI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.DivI_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("ModI", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.ModI_Reg_Reg;
-																								vm.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
-																						continue;
-						}
-												if(tokens.Count == 3
-							 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.ModI_Reg_I8;
-																								vm.Memory[memidx++] = (byte)i0;
-									vm.Memory[memidx++] = (byte)i1;
-																						continue;
-						}
-											}
-									if(tokens[0].Equals("Not", StringComparison.OrdinalIgnoreCase))
-					{
-												if(tokens.Count == 2
-							 && IsReg(tokens[1], out i0) )
-						{
-							vm.Memory[memidx++] = (byte)Instruction.Not_Reg;
-															vm.Memory[memidx++] = (byte)i0;
-														continue;
-						}
-											}
-				
-				throw new AssemblerException(lineidx - 1, line);
-            }
-
-			// write org
-			switch(vm.Type)
+			await Task.Run(() =>
 			{
-				case VMType.BitLength8:
-					vm.Memory[^1] = (byte)org;
-					break;
-				case VMType.BitLength16:
-					MemoryMarshal.Write(vm.Memory.AsSpan(^2..), ref org);
-					break;
-				default:
-					throw new InvalidOperationException($"Invalid VM type enountered: {vm.Type}.");
-			}
+				ushort memidx = 0, org = 0;
+				int i0, i1;
 
+				var labels = new Dictionary<string, ushort>();
+
+				var reader = new StringReader(s);
+				string? line;
+				int lineidx = 0;
+				var tokens = new List<string>();
+				while ((line = reader.ReadLine()) != null)
+				{
+					++lineidx;
+
+					tokens.Clear();
+					for (int idx = 0; idx < line.Length && !char.IsWhiteSpace(line[idx]); ++idx)
+					{
+						while (idx < line.Length && char.IsWhiteSpace(line[idx])) 
+							++idx;
+
+						var start = idx;
+						if(idx < line.Length && line[idx] == '$')
+						{
+							++idx;																// $
+							while (idx < line.Length && char.IsWhiteSpace(line[idx]))			// spaces
+								++idx;
+							while (idx < line.Length && !char.IsWhiteSpace(line[idx]))			// +
+								++idx;					
+							while (idx < line.Length && char.IsWhiteSpace(line[idx]))			// spaces
+								++idx;
+							while (idx < line.Length && !char.IsWhiteSpace(line[idx]))			// value
+								++idx;					
+						}
+						else
+							while (idx < line.Length && !char.IsWhiteSpace(line[idx]))
+								++idx;
+						tokens.Add(line[start..idx]);
+					}
+
+					redo:
+					if(!tokens.Any() || tokens[0].StartsWith(";")) continue;
+
+					static int ParseBinaryAsInt32(ReadOnlySpan<char> chars)
+					{
+						int result = 0, mask = 1 << (chars.Length - 1);
+						foreach (var c in chars)
+						{
+							result += mask * (c - '0');
+							mask >>= 1;
+						}
+
+						return result;
+					}
+
+					int GetNumber(string n) => n.StartsWith("0x") ? Convert.ToInt32(n, 16) : n.StartsWith("0b") ? ParseBinaryAsInt32(n.AsSpan(2)) : n[0] == '.' ? labels[n[1..]] : int.Parse(n);
+
+					bool IsReg(string s, out int r) 
+					{ 
+						var m = Regex.Match(s, @"^r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsI8(string s, out int r) 
+					{ 
+						var m = Regex.Match(s, @"^(\d+|0x[\dA-Fa-f]+|0b[01]+|\.\w+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsPReg(string s, out int r) 
+					{ 
+						var m = Regex.Match(s, @"^\[r(\d+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsPI8(string s, out int r) 
+					{ 
+						var m = Regex.Match(s, @"^\[(\d+|0x[\dA-Fa-f]+|0b[01]+|\.\w+)\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsRReg(string s, out int r)
+					{
+						var m = Regex.Match(s, @"^\$\s*\+\s*r(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsRI8(string s, out int r)
+					{
+						var m = Regex.Match(s, @"^\$\s*\+\s*(\d+|0x[\dA-Fa-f]+|0b[01]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+					bool IsAtAddress(string s, out int r)
+					{ 
+						var m = Regex.Match(s, @"^@(\d+|0x[\dA-Fa-f]+|0b[01]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+						r = m.Success ? GetNumber(m.Groups[1].Value) : 0; 
+						return m.Success; 
+					}
+
+					if (tokens.Count == 1 && IsAtAddress(tokens[0], out i0))
+					{
+						// @addr
+						memidx = (ushort)i0;
+						continue;
+					}
+
+					if (tokens.Count >= 1 && tokens[0].FirstOrDefault() == '.')
+					{
+						labels.Add(tokens[0][1..], memidx);
+						tokens.RemoveAt(0);
+						goto redo;
+					}
+
+					if(tokens.Count == 2 && tokens[0].Equals("DB", StringComparison.OrdinalIgnoreCase) && IsI8(tokens[1], out i0))
+					{
+						// db i8
+						mem.Memory[memidx++] = (byte)i0;
+						continue;
+					}
+
+					if(tokens.Count == 1 && tokens[0].Equals("ORG", StringComparison.OrdinalIgnoreCase))
+					{
+						org = memidx;
+						continue;
+					}
+
+											if(tokens[0].Equals("Nop", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 1
+								)
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Nop;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Mov", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_Reg_PI8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_Reg_PReg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsPI8(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_PI8_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsPI8(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_PI8_Reg;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsPI8(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_PI8_PI8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsPI8(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_PI8_PReg;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsPReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_PReg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsPReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_PReg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsPReg(tokens[1], out i0)  && IsPI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_PReg_PI8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsPReg(tokens[1], out i0)  && IsPReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Mov_PReg_PReg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("Int", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Int_I8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Int_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Jmp", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jmp_I8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jmp_RI8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jmp_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jmp_RReg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Cmp", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsI8(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Cmp_I8_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Cmp_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Cmp_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("Jl", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jl_I8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jl_RI8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jl_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jl_RReg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Jle", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jle_I8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jle_RI8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jle_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jle_RReg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Jg", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jg_I8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jg_RI8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jg_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jg_RReg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Jge", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jge_I8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jge_RI8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jge_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jge_RReg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Je", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Je_I8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Je_RI8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Je_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Je_RReg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Jne", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jne_I8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jne_RI8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jne_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Jne_RReg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Push", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Push_I8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Push_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Pop", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Pop_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Call", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Call_I8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRI8(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Call_RI8;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Call_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+														if(tokens.Count == 2
+								 && IsRReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Call_RReg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Ret", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 1
+								)
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Ret;
+																continue;
+							}
+													}
+											if(tokens[0].Equals("Shl", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Shl_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Shl_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("Shr", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Shr_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Shr_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("Or", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Or_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Or_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("And", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.And_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.And_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("Xor", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Xor_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Xor_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("AddI", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.AddI_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.AddI_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("SubI", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.SubI_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.SubI_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("MulI", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.MulI_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.MulI_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("DivI", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.DivI_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.DivI_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("ModI", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsReg(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.ModI_Reg_Reg;
+																											mem.Memory[memidx++] = (byte)(((i0 & 0xF) << 4) | (i1 & 0xF));
+																									continue;
+							}
+														if(tokens.Count == 3
+								 && IsReg(tokens[1], out i0)  && IsI8(tokens[2], out i1) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.ModI_Reg_I8;
+																											mem.Memory[memidx++] = (byte)i0;
+										mem.Memory[memidx++] = (byte)i1;
+																									continue;
+							}
+													}
+											if(tokens[0].Equals("Not", StringComparison.OrdinalIgnoreCase))
+						{
+														if(tokens.Count == 2
+								 && IsReg(tokens[1], out i0) )
+							{
+								mem.Memory[memidx++] = (byte)Instruction.Not_Reg;
+																	mem.Memory[memidx++] = (byte)i0;
+																continue;
+							}
+													}
+					
+					throw new AssemblerException(lineidx - 1, line);
+				}
+
+				// write org
+				switch(vm.Type)
+				{
+					case VMType.BitLength8:
+						mem.Memory[^1] = (byte)org;
+						break;
+					case VMType.BitLength16:
+						MemoryMarshal.Write(mem.Memory.AsSpan(^2..), ref org);
+						break;
+					default:
+						throw new InvalidOperationException($"Invalid VM type enountered: {vm.Type}.");
+				}
+			}).ConfigureAwait(true);
+
+			vm.CopyFromMemory(mem);
 			vm.Reset();
+			vm.FireRefreshRequired();
         }
 
 		private static readonly HashSet<string> Instructions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

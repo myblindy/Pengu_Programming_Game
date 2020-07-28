@@ -12,8 +12,6 @@ namespace Pengu.VirtualMachine
     {
         public int[] Registers { get; }
         public ushort StackRegister { get; set; }
-        public IList<byte> Memory { get; }
-        public string MemoryName { get; }
         public ushort StartInstructionPointer { get; set; }
         public ushort InstructionPointer { get; set; }
         public sbyte FlagCompare { get; set; }
@@ -21,28 +19,20 @@ namespace Pengu.VirtualMachine
 
         private readonly Dictionary<int, Action<VM>> Interrupts = new Dictionary<int, Action<VM>>();
 
-        public event Action<IMemory>? RefreshRequired;
-        public void FireRefreshRequired() => RefreshRequired?.Invoke(this);
+        public override IMemory CloneAsMemory() =>
+            new MemoryComponent(MemoryName, Memory.Count);
 
-        public VM(VMType type, int registers, string memoryName, int? memorySize = default, byte[]? memoryData = null)
-        {
-            static byte[] CloneMemoryData(int memorySize, byte[] memoryData)
-            {
-                var result = new byte[Math.Max(memorySize, memoryData.Length)];
-                Array.Copy(memoryData, result, memoryData.Length);
-                return result;
-            }
-
-            Type = type;
-            Registers = new int[registers];
-            MemoryName = memoryName;
-            Memory = memoryData is null
+        public VM(VMType type, int registers, string memoryName, int? memorySize = default, byte[]? memoryData = null):
+            base(memoryData is null
                 ? memorySize.HasValue
                     ? new byte[memorySize.Value]
                     : throw new ArgumentException("Cannot create a memory with no size and no data")
                 : memorySize.HasValue
                     ? CloneMemoryData(memorySize.Value, memoryData)
-                    : (byte[])memoryData.Clone();
+                    : (byte[])memoryData.Clone(), memoryName)
+        {
+            Type = type;
+            Registers = new int[registers];
         }
 
         public void Reset()

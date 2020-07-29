@@ -106,23 +106,24 @@ namespace Pengu.Renderer
                     return vm;
                 }));
 
-            foreach (var window in exercise.Windows!)
-                switch (window.Type)
-                {
-                    case WindowType.HexEditor:
-                        AddHexEditorWindow(FindMemory(window.MemoryName!), window.PositionX, window.PositionY, window.MemoryName, window.LinesCount);
-                        break;
-                    case WindowType.Assembler:
-                        AddNewWindow(new AssemblerWindow(context, this, string.IsNullOrWhiteSpace(window.LoadFile) ? null : exercise.ReadAllAssociatedFile(window.LoadFile),
-                            (VM)FindMemory(window.MemoryName!)));
-                        break;
-                    case WindowType.Playground:
-                        AddNewWindow(new PlaygroundWindow(context, this, window.PositionX!.Value, window.PositionY!.Value, window.Width!.Value, window.Height!.Value,
-                            window.DisplayComponents?.Select(c => (FindAny(c.Name!), c.PositionX, c.PositionY))));
-                        break;
-                    default:
-                        throw new NotImplementedException();
-                }
+            if (!(exercise.Windows is null))
+                foreach (var window in exercise.Windows)
+                    switch (window.Type)
+                    {
+                        case WindowType.HexEditor:
+                            AddHexEditorWindow(FindMemory(window.MemoryName!), window.PositionX, window.PositionY, window.MemoryName, window.LinesCount);
+                            break;
+                        case WindowType.Assembler:
+                            AddNewWindow(new AssemblerWindow(context, this, string.IsNullOrWhiteSpace(window.LoadFile) ? null : exercise.ReadAllAssociatedFile(window.LoadFile),
+                                (VM)FindMemory(window.MemoryName!)));
+                            break;
+                        case WindowType.Playground:
+                            AddNewWindow(new PlaygroundWindow(context, this, window.PositionX!.Value, window.PositionY!.Value, window.Width!.Value, window.Height!.Value,
+                                window.DisplayComponents?.Select(c => (FindAny(c.Name!), c.PositionX, c.PositionY))));
+                            break;
+                        default:
+                            throw new NotImplementedException();
+                    }
         }
 
         public override void UpdateLogic(TimeSpan elapsedTime)
@@ -137,7 +138,7 @@ namespace Pengu.Renderer
         public override CommandBuffer[] PreRender(uint nextImage)
         {
             Windows.ForEach(w => w.PreRender(nextImage));
-            return monospaceFont.PreRender(nextImage);
+            return Array.Empty<CommandBuffer>();
         }
 
         static float Map(float val, float srcMin, float srcMax, float dstMin, float dstMax) =>

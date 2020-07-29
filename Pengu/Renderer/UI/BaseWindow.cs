@@ -27,6 +27,13 @@ namespace Pengu.Renderer.UI
 
         bool dragging;
 
+        bool scrollVisible;
+        int scrollValue, scrollMaximum;
+
+        public bool ScrollVisible { get => scrollVisible; set { if (scrollVisible != value) { scrollVisible = value; ChromeFontStringDirty = true; } } }
+        public int ScrollValue { get => scrollValue; set { if (scrollValue != value) { scrollValue = value; ChromeFontStringDirty = true; } } }
+        public int ScrollMaximum { get => scrollMaximum; set { if (ScrollMaximum != value) { scrollMaximum = value; ChromeFontStringDirty = true; } } }
+
         Vector2 lastMouseCharacterPosition, newMouseCharacterPosition;
 
         protected VulkanContext.FontString AllocateWindowFontString() =>
@@ -67,13 +74,24 @@ namespace Pengu.Renderer.UI
         {
             var titleHalfOffset = (Width - chromeTitle.Length - 2) / 2;
             var titleHalfOffsetExtra = (Width - chromeTitle.Length - 2) % 2;
-            var line = "║" + new string(' ', Width) + "║\n";
+
+            var lineTemplate = "║" + new string(' ', Width);
+
+            string getLine(int idx)
+            {
+                if (scrollVisible)
+                    return lineTemplate +
+                        (idx == 0 ? '▲' : idx == Height - 1 ? '▼' :
+                        (int)((double)ScrollValue / scrollMaximum * (Height - 2)) == idx - 1 ? '▪' : '░') + "\n";
+                else
+                    return lineTemplate + "║\n";
+            }
 
             ChromeFontString.Set(
                 "╔" + new string('═', titleHalfOffset + titleHalfOffsetExtra) +
                     VulkanContext.Font.PrintableSpace + chromeTitle.Replace(' ', VulkanContext.Font.PrintableSpace) + VulkanContext.Font.PrintableSpace +
                     new string('═', titleHalfOffset) + "╗\n" +
-                string.Concat(Enumerable.Repeat(line, Height)) +
+                string.Concat(Enumerable.Range(0, Height).Select(getLine)) +
                 "╚" + new string('═', Width) + "╝",
                 overrides: IsFocused
                     ? new[] { new FontOverride(titleHalfOffset + titleHalfOffsetExtra + 1, chromeTitle.Length + 2, chromeForeground, chromeBackground, false) }
